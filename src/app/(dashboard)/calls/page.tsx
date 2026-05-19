@@ -53,7 +53,7 @@ interface SimulatedMessage {
 }
 
 export default function CallLogsPage() {
-  const { callLogs, patients, addCallLog, addAppointment, updateCallLogAction } = useClinicStore()
+  const { callLogs, patients, addCallLog, addAppointment, updateCallLogAction, addPatient } = useClinicStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [alertFilter, setAlertFilter] = useState('all')
@@ -154,7 +154,7 @@ export default function CallLogsPage() {
 
       // 2. Play out script bubbles sequentially
       script.forEach((item, index) => {
-        setTimeout(() => {
+        setTimeout(async () => {
           setSimMessages(prev => [...prev, item])
           if (item.speaker === 'AI') {
             setActiveSpeech(item.text)
@@ -167,10 +167,44 @@ export default function CallLogsPage() {
             setCallPhase('completed')
             setActiveSpeech('')
             
+            // Resolve or generate UUID for patient
+            let realPatientId = patientId
+            if (!realPatientId) {
+              const generateUUID = () => {
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                  const r = Math.random() * 16 | 0;
+                  const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                  return v.toString(16);
+                });
+              }
+              const newGeneratedId = generateUUID()
+              // Automatically register patient in database
+              realPatientId = await addPatient({
+                id: newGeneratedId,
+                tenantId: '395b50b9-9504-4bda-bd38-7ce5b53e7aa0',
+                name: name,
+                phone: phone,
+                email: `${name.toLowerCase().replace(/\s+/g, '')}@example.com`,
+                preferredChannel: 'VOICE',
+                consents: { essential: true, marketing: true, intelligence: true },
+                totalAppointments: 1,
+                totalSpent: 220.00,
+                averageAppointmentValue: 220.00,
+                lastAppointmentAt: new Date().toISOString(),
+                firstAppointmentAt: new Date().toISOString(),
+                churnRisk: 'LOW',
+                rfmSegment: 'NEW',
+                insurance: { provider: 'Uninsured', policyNumber: '', status: 'PENDING' },
+                treatmentHistory: ['Teeth Whitening'],
+                allergens: [],
+                medications: []
+              })
+            }
+
             // Add appointment dynamically to calendar
-            addAppointment({
+            await addAppointment({
               tenantId: '395b50b9-9504-4bda-bd38-7ce5b53e7aa0',
-              patientId: patientId || 'pat-custom',
+              patientId: realPatientId,
               patientName: name,
               patientPhone: phone,
               date: '2026-05-19',

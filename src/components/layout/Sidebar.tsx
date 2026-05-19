@@ -30,6 +30,11 @@ export function Sidebar() {
   const pathname = usePathname()
   const { info } = useClinicStore()
 
+  const handleSignOut = () => {
+    document.cookie = "user_session=; path=/; max-age=0; samesite=lax;"
+    window.location.href = '/login'
+  }
+
   return (
     <aside className="w-64 bg-surface border-r border-border flex flex-col h-screen fixed left-0 top-0 z-30">
       {/* Brand Logo Header */}
@@ -78,6 +83,7 @@ export function Sidebar() {
 
         <button 
           suppressHydrationWarning
+          onClick={handleSignOut}
           className="w-full mt-4 flex items-center gap-3 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-danger hover:bg-danger/5 rounded-xl transition-all active:scale-95"
         >
           <LogOut className="w-4 h-4" />

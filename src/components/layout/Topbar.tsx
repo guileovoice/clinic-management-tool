@@ -28,6 +28,11 @@ export function Topbar() {
   const [notificationCount, setNotificationCount] = useState(3)
   const { info } = useClinicStore()
 
+  const handleSignOut = () => {
+    document.cookie = "user_session=; path=/; max-age=0; samesite=lax;"
+    window.location.href = '/login'
+  }
+
   useEffect(() => {
     setMounted(true)
     const timer = setInterval(() => setTime(new Date()), 1000)
@@ -131,16 +136,42 @@ export function Topbar() {
         </DropdownMenu>
 
         {/* Clinic Location Trigger */}
-        <div className="flex items-center gap-2 p-1 pl-2 pr-1 rounded-full border border-border hover:bg-surface2 transition-all cursor-pointer">
-          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-extrabold uppercase shrink-0">
-            {info.name.split(' ').map(n => n[0]).join('')}
-          </div>
-          <div className="hidden md:block text-left shrink-0 max-w-[160px]">
-            <p className="text-[10px] font-black text-text-primary uppercase tracking-wide leading-none truncate">{info.name}</p>
-            <p className="text-[8px] text-text-muted mt-0.5 font-bold uppercase tracking-widest truncate">{info.category}</p>
-          </div>
-          <ChevronDown className="w-3.5 h-3.5 text-text-muted mr-1" />
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <div className="flex items-center gap-2 p-1 pl-2 pr-1 rounded-full border border-border hover:bg-surface2 transition-all cursor-pointer outline-none">
+              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-extrabold uppercase shrink-0">
+                {info.name.split(' ').map(n => n[0]).join('')}
+              </div>
+              <div className="hidden md:block text-left shrink-0 max-w-[160px]">
+                <p className="text-[10px] font-black text-text-primary uppercase tracking-wide leading-none truncate">{info.name}</p>
+                <p className="text-[8px] text-text-muted mt-0.5 font-bold uppercase tracking-widest truncate">{info.category}</p>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-text-muted mr-1" />
+            </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64 bg-surface border-border p-2 rounded-2xl shadow-xl space-y-1">
+            <div className="p-2 flex flex-col gap-0.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-text-primary">{info.name}</span>
+              <span className="text-[8px] text-text-muted font-bold uppercase tracking-widest">{info.category}</span>
+            </div>
+            
+            <DropdownMenuSeparator className="bg-border my-1" />
+            
+            <div className="p-2 flex flex-col gap-1.5 text-[10px] text-text-muted font-mono">
+              <div className="truncate">📍 {info.address}</div>
+              <div>📞 {info.phone}</div>
+            </div>
+
+            <DropdownMenuSeparator className="bg-border my-1" />
+
+            <DropdownMenuItem 
+              onClick={handleSignOut}
+              className="p-2 rounded-xl text-danger hover:bg-danger/5 focus:bg-danger/5 flex items-center gap-2.5 cursor-pointer font-bold text-xs uppercase tracking-wider"
+            >
+              <Lock className="w-4 h-4 shrink-0" /> Sign Out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   )
