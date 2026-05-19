@@ -111,7 +111,7 @@ export default function CampaignsPage() {
     const recCount = estimateRecipients(campSegment)
 
     await addCampaign({
-      tenantId: 'clinic-tenant-395b50b9-9504',
+      tenantId: '395b50b9-9504-4bda-bd38-7ce5b53e7aa0',
       name: campName,
       channel: campChannel,
       status: campScheduledAt ? 'SCHEDULED' : 'DRAFT',

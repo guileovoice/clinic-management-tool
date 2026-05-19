@@ -169,7 +169,7 @@ export default function CallLogsPage() {
             
             // Add appointment dynamically to calendar
             addAppointment({
-              tenantId: 'clinic-tenant-395b50b9-9504',
+              tenantId: '395b50b9-9504-4bda-bd38-7ce5b53e7aa0',
               patientId: patientId || 'pat-custom',
               patientName: name,
               patientPhone: phone,
@@ -186,7 +186,7 @@ export default function CallLogsPage() {
 
             // Add call log dynamically to telephony
             addCallLog({
-              tenantId: 'clinic-tenant-395b50b9-9504',
+              tenantId: '395b50b9-9504-4bda-bd38-7ce5b53e7aa0',
               patientName: name,
               phone: phone,
               duration: '30s',

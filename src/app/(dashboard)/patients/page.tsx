@@ -167,7 +167,7 @@ export default function PatientsCRMPage() {
 
     for (const patient of previewPatients) {
       await addPatient({
-        tenantId: 'clinic-tenant-395b50b9-9504',
+        tenantId: '395b50b9-9504-4bda-bd38-7ce5b53e7aa0',
         name: patient.name,
         phone: patient.phone,
         email: patient.email,

@@ -49,7 +49,7 @@ interface ClinicState {
   sendCampaign: (id: string) => Promise<void>
 }
 
-const DEFAULT_TENANT_ID = 'clinic-tenant-395b50b9-9504'
+const DEFAULT_TENANT_ID = '395b50b9-9504-4bda-bd38-7ce5b53e7aa0'
 
 export const useClinicStore = create<ClinicState>((set, get) => ({
   info: {

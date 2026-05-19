@@ -133,7 +133,7 @@ export default function ClinicalCalendarPage() {
     }
 
     await addAppointment({
-      tenantId: 'clinic-tenant-395b50b9-9504',
+      tenantId: '395b50b9-9504-4bda-bd38-7ce5b53e7aa0',
       patientId: patient.id,
       patientName: patient.name,
       patientPhone: patient.phone,
