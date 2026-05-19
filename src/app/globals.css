@@ -1,0 +1,91 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular;
+
+  --color-primary: #6C3CE1;
+  --color-primary-dark: #5330B4;
+  --color-secondary: #F59E0B;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-background: #0F0F13;
+  --color-surface: #1A1A24;
+  --color-surface2: #22222F;
+  --color-border: #2E2E3F;
+  --color-text-primary: #F1F1F3;
+  --color-text-muted: #8B8BA0;
+
+  --radius-xl: 0.75rem;
+  --radius-lg: 0.5rem;
+  --radius-md: 0.375rem;
+  --radius-sm: 0.25rem;
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  --background: #0F0F13;
+  --foreground: #F1F1F3;
+  --card: #1A1A24;
+  --card-foreground: #F1F1F3;
+  --popover: #1A1A24;
+  --popover-foreground: #F1F1F3;
+  --primary: #6C3CE1;
+  --primary-foreground: #F1F1F3;
+  --secondary: #F59E0B;
+  --secondary-foreground: #0F0F13;
+  --muted: #22222F;
+  --muted-foreground: #8B8BA0;
+  --accent: #22222F;
+  --accent-foreground: #F1F1F3;
+  --destructive: #EF4444;
+  --destructive-foreground: #F1F1F3;
+  --border: #2E2E3F;
+  --input: #22222F;
+  --ring: #6C3CE1;
+  --radius: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-primary/50;
+  }
+  body {
+    @apply bg-background text-text-primary antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Custom scrollbar for dark mode */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--background);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--surface2);
+  }
+}
