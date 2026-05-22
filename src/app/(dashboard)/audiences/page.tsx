@@ -53,6 +53,8 @@ interface AudienceSegment {
   lastSync: string
 }
 
+import { DateRangeFilter } from '@/components/shared/DateRangeFilter'
+
 export default function AudiencesPage() {
   const { patients } = useClinicStore()
   
@@ -152,13 +154,16 @@ export default function AudiencesPage() {
         title="Privacy-Safe Ad Sync Command" 
         subtitle="HIPAA-compliant patient segment targeting, automated SHA-256 hashing, and pixel-retargeting dashboards."
         actions={
-          <Button 
-            onClick={() => setIsCustomOpen(true)}
-            className="bg-primary hover:bg-primary-dark text-white gap-2 text-xs font-black uppercase tracking-wider h-10 shadow-lg shadow-primary/20"
-          >
-            <Plus className="w-4.5 h-4.5" />
-            Build Custom Audience
-          </Button>
+          <div className="flex items-center gap-3">
+            <DateRangeFilter />
+            <Button 
+              onClick={() => setIsCustomOpen(true)}
+              className="bg-primary hover:bg-primary-dark text-white gap-2 text-xs font-black uppercase tracking-wider h-10 shadow-lg shadow-primary/20"
+            >
+              <Plus className="w-4.5 h-4.5" />
+              Build Custom Audience
+            </Button>
+          </div>
         }
       />
 

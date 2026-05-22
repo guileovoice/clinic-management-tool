@@ -1,17 +1,15 @@
 'use client'
 
-import { useState } from 'react'
 import { 
   Calendar as CalendarIcon, 
   DollarSign, 
   Users, 
-  PhoneMissed, 
+  Phone, 
+  PhoneIncoming,
   ShieldCheck, 
   Download,
   AlertTriangle,
   Clock,
-  ExternalLink,
-  ChevronRight,
   TrendingUp,
   Activity,
   Award
@@ -19,9 +17,10 @@ import {
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { useClinicStore } from '@/lib/stores/clinicStore'
+import { useClinicStore, useFilteredAppointments, useFilteredCallLogs } from '@/lib/stores/clinicStore'
+import { DateRangeFilter } from '@/components/shared/DateRangeFilter'
 import { toast } from 'react-hot-toast'
-import { format, subDays, isWithinInterval, startOfDay, endOfDay } from 'date-fns'
+import { format } from 'date-fns'
 
 // Recharts components with client-safe imports
 import { 
@@ -40,36 +39,23 @@ import {
 const COLORS = ['#6C3CE1', '#10B981', '#3B82F6', '#F59E0B']
 
 export default function ClinicOverviewPage() {
-  const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | '7days' | '30days' | 'all'>('all')
-  const { appointments, callLogs, patients } = useClinicStore()
-
-  // Calculate filtered date bounds
-  const getFilteredAppointments = () => {
-    const now = new Date()
-    return appointments.filter(apt => {
-      const aptDate = new Date(apt.date)
-      if (dateFilter === 'today') {
-        return isWithinInterval(aptDate, { start: startOfDay(now), end: endOfDay(now) })
-      } else if (dateFilter === 'yesterday') {
-        const yesterday = subDays(now, 1)
-        return isWithinInterval(aptDate, { start: startOfDay(yesterday), end: endOfDay(yesterday) })
-      } else if (dateFilter === '7days') {
-        return isWithinInterval(aptDate, { start: startOfDay(subDays(now, 7)), end: endOfDay(now) })
-      } else if (dateFilter === '30days') {
-        return isWithinInterval(aptDate, { start: startOfDay(subDays(now, 30)), end: endOfDay(now) })
-      }
-      return true // 'all'
-    })
-  }
-
-  const filteredApts = getFilteredAppointments()
+  const { patients } = useClinicStore()
+  const filteredApts = useFilteredAppointments()
+  const filteredCallLogs = useFilteredCallLogs()
 
   // Metrics calculations
   const totalBookings = filteredApts.length
   const totalRevenue = filteredApts.reduce((sum, apt) => sum + apt.totalAmount, 0)
   const averageTicket = totalBookings > 0 ? totalRevenue / totalBookings : 0
   
-  const missedCallsCount = callLogs.filter(log => log.status === 'missed').length
+  const totalCalls = filteredCallLogs.length
+  const completedCalls = filteredCallLogs.filter(log => log.status === 'completed').length
+  const missedCallsCount = filteredCallLogs.filter(log => log.status === 'missed').length
+  const totalCallCost = filteredCallLogs.reduce((sum, log) => sum + (log.costUsd || 0), 0)
+  const avgCallDuration = totalCalls > 0
+    ? filteredCallLogs.reduce((sum, log) => sum + (log.durationSeconds || 0), 0) / totalCalls
+    : 0
+
   const completedAptsCount = filteredApts.filter(apt => apt.status === 'COMPLETED').length
   const noShowsCount = filteredApts.filter(apt => apt.status === 'NO_SHOW').length
   const noShowRate = totalBookings > 0 ? (noShowsCount / totalBookings) * 100 : 0
@@ -117,7 +103,7 @@ export default function ClinicOverviewPage() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.setAttribute("href", url)
-    link.setAttribute("download", `guileo_clinic_report_${dateFilter}_${new Date().toISOString().split('T')[0]}.csv`)
+    link.setAttribute("download", `guileo_clinic_report_${new Date().toISOString().split('T')[0]}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -156,30 +142,7 @@ export default function ClinicOverviewPage() {
         subtitle="Real-time patient acquisition, AI telephony logs, automated calendar booking, and GDPR privacy."
         actions={
           <div className="flex flex-wrap items-center gap-3">
-            
-            {/* Elegant Button Group Filters */}
-            <div className="flex items-center bg-surface border border-border p-1 rounded-xl">
-              {[
-                { key: 'today', label: 'Today' },
-                { key: 'yesterday', label: 'Yesterday' },
-                { key: '7days', label: '7 Days' },
-                { key: '30days', label: '30 Days' },
-                { key: 'all', label: 'All Time' },
-              ].map(opt => (
-                <button
-                  key={opt.key}
-                  onClick={() => setDateFilter(opt.key as any)}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-200 ${
-                    dateFilter === opt.key 
-                      ? 'bg-primary text-white shadow-sm' 
-                      : 'text-text-muted hover:text-text-primary'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-
+            <DateRangeFilter />
             <Button 
               suppressHydrationWarning
               onClick={handleDownloadReport}
@@ -189,7 +152,6 @@ export default function ClinicOverviewPage() {
               <Download className="w-4 h-4 text-primary" />
               Download Report
             </Button>
-            
           </div>
         }
       />
@@ -226,14 +188,20 @@ export default function ClinicOverviewPage() {
           <p className="text-[9px] text-text-muted mt-1">Per appointment</p>
         </Card>
 
-        {/* Missed Calls */}
+        {/* AI Call Volume */}
         <Card className="p-4 bg-surface border-border relative overflow-hidden group">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[9px] font-black text-text-muted uppercase tracking-widest">Missed Inquiries</span>
-            <PhoneMissed className="w-4 h-4 text-danger" />
+            <span className="text-[9px] font-black text-text-muted uppercase tracking-widest">AI Call Volume</span>
+            <Phone className="w-4 h-4 text-primary" />
           </div>
-          <h3 className="text-xl font-bold text-text-primary">{missedCallsCount}</h3>
-          <p className="text-[9px] text-danger font-bold mt-1">Requires human callback</p>
+          <h3 className="text-xl font-bold text-text-primary">{totalCalls}</h3>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[9px] text-emerald-500 font-bold flex items-center gap-1">
+              <PhoneIncoming className="w-3 h-3" /> {completedCalls} done
+            </span>
+            <span className="text-[9px] text-text-muted">·</span>
+            <span className="text-[9px] text-danger font-bold">{missedCallsCount} missed</span>
+          </div>
         </Card>
 
         {/* No Show Rate */}
@@ -256,6 +224,7 @@ export default function ClinicOverviewPage() {
           <p className="text-[9px] text-emerald-500 font-bold mt-1">PMS API linked</p>
         </Card>
       </div>
+
 
       {/* Recharts Graphical Panels */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -360,7 +329,7 @@ export default function ClinicOverviewPage() {
             </div>
 
             <div className="space-y-4">
-              {callLogs.map(log => (
+              {filteredCallLogs.map(log => (
                 <div key={log.id} className="p-4 bg-surface2 rounded-xl border border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-primary/30 transition-all cursor-pointer group">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">

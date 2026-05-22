@@ -13,7 +13,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select'
-import { useClinicStore } from '@/lib/stores/clinicStore'
+import { useClinicStore, useFilteredPatients } from '@/lib/stores/clinicStore'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 import { 
@@ -25,13 +25,16 @@ import {
   DialogFooter
 } from '@/components/ui/dialog'
 
+import { DateRangeFilter } from '@/components/shared/DateRangeFilter'
+
 export default function PatientsCRMPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [segmentFilter, setSegmentFilter] = useState('all')
   const [consentFilter, setConsentFilter] = useState('all')
   const router = useRouter()
   
-  const { patients, fetchPatients, addPatient } = useClinicStore()
+  const { patients, addPatient } = useClinicStore()
+  const dateFilteredPatients = useFilteredPatients()
 
   // Import file and preview states
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
@@ -193,14 +196,14 @@ export default function PatientsCRMPage() {
     setImportFile(null)
   }
 
-  // Calculate dynamic stats
+  // Calculate dynamic stats (from all patients, not date-filtered)
   const totalCount = patients.length
   const activeCount = patients.filter(p => p.churnRisk === 'LOW').length
   const atRiskCount = patients.filter(p => p.churnRisk === 'HIGH').length
   const marketingCount = patients.filter(p => p.consents?.marketing).length
 
-  // Filter patients dynamically
-  const filteredPatients = patients.filter(p => {
+  // Filter patients dynamically (using date-filtered base)
+  const filteredPatients = dateFilteredPatients.filter(p => {
     const matchesSearch = 
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
       p.phone.includes(searchQuery) ||
@@ -283,6 +286,7 @@ export default function PatientsCRMPage() {
         subtitle="HIPAA-compliant patient directory, treatment summaries, insurance verification, and privacy logs."
         actions={
           <div className="flex items-center gap-3">
+            <DateRangeFilter />
             <Button 
               suppressHydrationWarning
               onClick={() => setIsImportModalOpen(true)}

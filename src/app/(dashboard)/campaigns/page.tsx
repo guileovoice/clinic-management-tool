@@ -41,12 +41,14 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select'
-import { useClinicStore } from '@/lib/stores/clinicStore'
+import { useClinicStore, filterByDateRange } from '@/lib/stores/clinicStore'
 import { toast } from 'react-hot-toast'
 import { format } from 'date-fns'
 
+import { DateRangeFilter } from '@/components/shared/DateRangeFilter'
+
 export default function CampaignsPage() {
-  const { campaigns, patients, addCampaign, sendCampaign } = useClinicStore()
+  const { campaigns, patients, dateRange, addCampaign, sendCampaign } = useClinicStore()
   
   const [searchQuery, setSearchQuery] = useState('')
   const [channelFilter, setChannelFilter] = useState('all')
@@ -63,15 +65,17 @@ export default function CampaignsPage() {
   // Detailed Analytics State
   const [selectedCampaign, setSelectedCampaign] = useState<any | null>(null)
 
+  // Date range filter - uses createdAt as primary date column
+  const dateFilteredCampaigns = filterByDateRange(campaigns, dateRange.start, dateRange.end, 'createdAt')
+
   // Calculations
-  const totalCampaigns = campaigns.length
-  const activeCount = campaigns.filter(c => c.status === 'SENT').length
-  const totalRevenue = campaigns.reduce((sum, c) => sum + (c.revenue || 0), 0)
-  const totalRecipients = campaigns.reduce((sum, c) => sum + c.recipientCount, 0)
+  const totalCampaigns = dateFilteredCampaigns.length
+  const activeCount = dateFilteredCampaigns.filter(c => c.status === 'SENT').length
+  const totalRevenue = dateFilteredCampaigns.reduce((sum, c) => sum + (c.revenue || 0), 0)
+  const totalRecipients = dateFilteredCampaigns.reduce((sum, c) => sum + c.recipientCount, 0)
   const avgRoiRate = activeCount > 0 ? (totalRevenue / (activeCount * 120)) * 100 : 0 // hypothetical cost $120 per send
 
-  // Filters
-  const filteredCampaigns = campaigns.filter(cmp => {
+  const filteredCampaigns = dateFilteredCampaigns.filter(cmp => {
     const matchesSearch = 
       cmp.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
       cmp.segment.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -155,13 +159,16 @@ export default function CampaignsPage() {
         title="Outreach Campaigns Command Center" 
         subtitle="HIPAA-authorized Winback campaigns, AI-translated SMS notification triggers, and live marketing ROI calculations."
         actions={
-          <Button 
-            onClick={() => setIsCreateOpen(true)}
-            className="bg-primary hover:bg-primary-dark text-white gap-2 text-xs font-black uppercase tracking-wider h-10 shadow-lg shadow-primary/20"
-          >
-            <Plus className="w-4.5 h-4.5" />
-            Create Campaign
-          </Button>
+          <div className="flex items-center gap-3">
+            <DateRangeFilter />
+            <Button 
+              onClick={() => setIsCreateOpen(true)}
+              className="bg-primary hover:bg-primary-dark text-white gap-2 text-xs font-black uppercase tracking-wider h-10 shadow-lg shadow-primary/20"
+            >
+              <Plus className="w-4.5 h-4.5" />
+              Create Campaign
+            </Button>
+          </div>
         }
       />
 
@@ -195,7 +202,7 @@ export default function CampaignsPage() {
           <div>
             <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Scheduled (PENDING)</p>
             <h3 className="text-xl font-bold text-text-primary">
-              {campaigns.filter(c => c.status === 'SCHEDULED' || c.status === 'DRAFT').length}
+              {dateFilteredCampaigns.filter(c => c.status === 'SCHEDULED' || c.status === 'DRAFT').length}
             </h3>
           </div>
         </Card>

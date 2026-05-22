@@ -63,6 +63,8 @@ export function Topbar() {
           <span>{mounted ? format(time, 'EEE, MMM d · hh:mm:ss aa') : 'Loading time...'}</span>
         </div>
 
+
+
         {/* HIPAA Verified Secure Lock */}
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold mr-2 shrink-0">
           <ShieldCheck className="w-4 h-4 animate-pulse" />

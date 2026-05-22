@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useClinicStore } from '@/lib/stores/clinicStore'
+import { DateRangeFilter } from '@/components/shared/DateRangeFilter'
 import { toast } from 'react-hot-toast'
 import { 
   Dialog, 
@@ -47,11 +48,11 @@ const TIMES = [
 
 export default function ClinicalCalendarPage() {
   const { appointments, patients, addAppointment, updateAppointmentStatus, deleteAppointment, info } = useClinicStore()
-  const [selectedDate, setSelectedDate] = useState('2026-05-18')
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   
   // View mode and current month selection state
   const [viewMode, setViewMode] = useState<'day' | 'month'>('day')
-  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 4, 1)) // May 2026
+  const [currentMonth, setCurrentMonth] = useState(new Date())
 
   const handlePrevMonth = () => {
     setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
@@ -96,7 +97,7 @@ export default function ClinicalCalendarPage() {
   const [notes, setNotes] = useState('')
   const [amount, setAmount] = useState('150')
 
-  // Group appointments by time slot for the selected date
+  // Group appointments by time slot for the selected date (use all appointments, not date-filtered)
   const filteredApts = appointments.filter(apt => apt.date === selectedDate)
 
   // Triggered when an empty time slot is clicked to book
@@ -177,6 +178,7 @@ export default function ClinicalCalendarPage() {
         subtitle="Real-time appointment scheduler, automated conflict checks, and SMS/WhatsApp reminder triggers."
         actions={
           <div className="flex items-center gap-3">
+            <DateRangeFilter />
             {/* View Mode Toggle */}
             <div className="flex items-center bg-surface border border-border p-1 rounded-xl">
               <button 
@@ -343,9 +345,9 @@ export default function ClinicalCalendarPage() {
                 {/* Day cells */}
                 {monthDays.map((day, idx) => {
                   const dateStr = formatDateString(day.date)
-                  const dayApts = appointments.filter(a => a.date === dateStr)
+                  const dayApts = appointments.filter((a: any) => a.date === dateStr)
                   const isSelected = selectedDate === dateStr
-                  const isToday = dateStr === '2026-05-18'
+                  const isToday = dateStr === new Date().toISOString().split('T')[0]
                   
                   return (
                     <div 
@@ -504,7 +506,7 @@ export default function ClinicalCalendarPage() {
                   </div>
                   <Button 
                     onClick={() => {
-                      const occupiedTimes = appointments.filter(a => a.date === selectedDate).map(a => a.time)
+                      const occupiedTimes = appointments.filter((a: any) => a.date === selectedDate).map((a: any) => a.time)
                       const freeTime = TIMES.find(t => !occupiedTimes.includes(t)) || '09:00'
                       setSelectedSlot({ time: freeTime })
                       setIsNewModalOpen(true)
@@ -517,8 +519,8 @@ export default function ClinicalCalendarPage() {
                 </div>
 
                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                  {appointments.filter(a => a.date === selectedDate).length > 0 ? (
-                    appointments.filter(a => a.date === selectedDate).map(apt => (
+                  {appointments.filter((a: any) => a.date === selectedDate).length > 0 ? (
+                    appointments.filter((a: any) => a.date === selectedDate).map((apt: any) => (
                       <div 
                         key={apt.id}
                         onClick={() => setSelectedApt(apt)}

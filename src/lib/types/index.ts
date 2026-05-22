@@ -74,11 +74,19 @@ export interface CallLog {
   patientName: string
   phone: string
   timestamp: string
-  duration: string // e.g. "2m 14s"
+  startedAt: string
+  durationSeconds: number
+  duration: string // computed display e.g. "1m 45s"
   status: 'completed' | 'missed' | 'answered'
+  rawStatus?: string
+  costUsd: number
+  source: string
   recordingUrl?: string
   transcript?: string
   summary?: string
+  type?: string
+  assistantId?: string
+  vapiAccount: string
   actionRequired: boolean
 }
 

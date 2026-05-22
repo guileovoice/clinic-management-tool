@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { Patient, Appointment, Campaign, CallLog, AppointmentStatus, AppointmentType } from '../types'
 import { supabase } from '../supabaseClient'
+import { startOfDay, endOfDay, isWithinInterval } from 'date-fns'
 
 interface ClinicInfo {
   id: string
@@ -22,6 +23,17 @@ interface ClinicInfo {
   stripeSecretKey: string
 }
 
+export interface DateRange {
+  start: string
+  end: string
+}
+
+function getDefaultDateRange(): DateRange {
+  const today = new Date()
+  const str = today.toISOString().split('T')[0]
+  return { start: str, end: str }
+}
+
 interface ClinicState {
   info: ClinicInfo
   patients: Patient[]
@@ -29,6 +41,7 @@ interface ClinicState {
   campaigns: Campaign[]
   callLogs: CallLog[]
   isLoading: boolean
+  dateRange: DateRange
 
   // Actions
   bootstrapData: () => Promise<void>
@@ -37,6 +50,7 @@ interface ClinicState {
   fetchAppointments: () => Promise<void>
   fetchCampaigns: () => Promise<void>
   fetchCallLogs: () => Promise<void>
+  setDateRange: (range: DateRange) => void
 
   addPatient: (patient: Omit<Patient, 'id' | 'createdAt'> & { id?: string }) => Promise<string>
   addAppointment: (appointment: Omit<Appointment, 'id' | 'createdAt'> & { id?: string }) => Promise<string>
@@ -54,221 +68,27 @@ interface ClinicState {
 const DEFAULT_TENANT_ID = '395b50b9-9504-4bda-bd38-7ce5b53e7aa0'
 
 // =========================================================================
-// MOCK DATA FOR SEEDING / FALLBACK
+// BLANK DEFAULTS (no mock data - always load from Supabase)
 // =========================================================================
 
-const INITIAL_CLINIC_INFO: ClinicInfo = {
+const DEFAULT_CLINIC_INFO: ClinicInfo = {
   id: DEFAULT_TENANT_ID,
-  name: 'Origem Dental & Aesthetic Clinic',
-  address: '42-15 Broadway, Astoria, Queens, NY 11103',
-  phone: '+1-718-555-4040',
+  name: 'Loading...',
+  address: '',
+  phone: '',
   category: 'Dental & Aesthetics',
   voicePersona: 'Dr. Arthur (AI)',
   agentLanguage: 'en-US',
-  greetingText: 'Welcome to Origem Dental & Aesthetic Clinic. This is Arthur, your virtual dental assistant. How can I assist you with scheduling or dental care today?',
+  greetingText: '',
   agentTemp: '0.4',
   interruptSens: 'Medium',
   waConfirmations: true,
   smsNoShowAlerts: true,
   autoInsuranceVerify: true,
   churnRiskAnalytics: true,
-  stripePublishableKey: 'pk_test_mock_holder',
-  stripeSecretKey: 'sk_test_mock_holder'
+  stripePublishableKey: '',
+  stripeSecretKey: ''
 }
-
-const INITIAL_PATIENTS: Patient[] = [
-  {
-    id: 'a0b1c2d3-e4f5-6789-0123-456789abcdef',
-    tenantId: DEFAULT_TENANT_ID,
-    name: 'Maria Silva',
-    phone: '+1-718-555-1212',
-    email: 'maria.silva@gmail.com',
-    preferredChannel: 'WHATSAPP',
-    consents: { essential: true, marketing: true, intelligence: true },
-    totalAppointments: 12,
-    totalSpent: 1850.00,
-    averageAppointmentValue: 154.16,
-    lastAppointmentAt: '2026-05-15T10:00:00Z',
-    firstAppointmentAt: '2025-09-10T14:30:00Z',
-    churnRisk: 'LOW',
-    rfmSegment: 'CHAMPION',
-    insurance: {
-      provider: 'Delta Dental',
-      policyNumber: 'DD-9831A',
-      groupNumber: 'G-1102',
-      status: 'VERIFIED',
-      coverageDetails: 'Covers 100% preventive, 80% basic procedures, 50% major treatments.'
-    },
-    treatmentHistory: ['Routine Cleaning', 'Cavity Filling (Tooth #14)', 'Teeth Whitening'],
-    allergens: ['Penicillin'],
-    medications: ['Amoxicillin (pre-op)'],
-    createdAt: '2025-09-10T14:30:00Z'
-  },
-  {
-    id: 'b1c2d3e4-f5a6-7890-1234-567890abcdef',
-    tenantId: DEFAULT_TENANT_ID,
-    name: 'João Santos',
-    phone: '+1-917-555-9080',
-    email: 'joao.santos@outlook.com',
-    preferredChannel: 'VOICE',
-    consents: { essential: true, marketing: false, intelligence: false },
-    totalAppointments: 3,
-    totalSpent: 450.00,
-    averageAppointmentValue: 150.00,
-    lastAppointmentAt: '2026-05-18T11:00:00Z',
-    firstAppointmentAt: '2026-01-14T09:00:00Z',
-    churnRisk: 'LOW',
-    rfmSegment: 'LOYAL',
-    insurance: {
-      provider: 'Cigna Dental',
-      policyNumber: 'CIG-882193',
-      status: 'VERIFIED',
-      coverageDetails: 'Covers 80% preventive and basic care.'
-    },
-    treatmentHistory: ['Comprehensive Oral Exam', 'Full Mouth X-Rays'],
-    allergens: [],
-    medications: [],
-    createdAt: '2026-01-14T09:00:00Z'
-  },
-  {
-    id: 'c2d3e4f5-a6b7-8901-2345-678901abcdef',
-    tenantId: DEFAULT_TENANT_ID,
-    name: 'Carlos Mendes',
-    phone: '+1-516-555-0012',
-    email: 'carlos.m@yahoo.com',
-    preferredChannel: 'SMS',
-    consents: { essential: true, marketing: true, intelligence: false },
-    totalAppointments: 1,
-    totalSpent: 90.00,
-    averageAppointmentValue: 90.00,
-    lastAppointmentAt: '2026-05-14T15:30:00Z',
-    firstAppointmentAt: '2026-05-14T15:30:00Z',
-    churnRisk: 'HIGH',
-    rfmSegment: 'NEW',
-    insurance: {
-      provider: 'MetLife Dental',
-      policyNumber: 'MET-44109',
-      status: 'PENDING'
-    },
-    treatmentHistory: ['Emergency Consultation (Toothache)'],
-    allergens: ['Sulfa Drugs'],
-    medications: ['Ibuprofen 800mg'],
-    createdAt: '2026-05-14T15:30:00Z'
-  }
-]
-
-const INITIAL_APPOINTMENTS: Appointment[] = [
-  {
-    id: 'd3e4f5a6-b7c8-9012-3456-789012abcdef',
-    tenantId: DEFAULT_TENANT_ID,
-    patientId: 'a0b1c2d3-e4f5-6789-0123-456789abcdef',
-    patientName: 'Maria Silva',
-    patientPhone: '+1-718-555-1212',
-    date: '2026-05-18',
-    time: '09:00',
-    duration: 60,
-    status: 'CONFIRMED',
-    type: 'PROCEDURE',
-    providerName: 'Dr. Arthur Mendes',
-    totalAmount: 320.00,
-    insuranceVerified: true,
-    notes: 'Root canal therapy follow-up.',
-    createdAt: '2026-05-10T12:00:00Z'
-  },
-  {
-    id: 'e4f5a6b7-c8d9-0123-4567-890123abcdef',
-    tenantId: DEFAULT_TENANT_ID,
-    patientId: 'b1c2d3e4-f5a6-7890-1234-567890abcdef',
-    patientName: 'João Santos',
-    patientPhone: '+1-917-555-9080',
-    date: '2026-05-18',
-    time: '11:00',
-    duration: 45,
-    status: 'COMPLETED',
-    type: 'CHECKUP',
-    providerName: 'Dr. Arthur Mendes',
-    totalAmount: 150.00,
-    insuranceVerified: true,
-    notes: 'Routine 6-month cleaning and screening.',
-    createdAt: '2026-05-08T10:30:00Z'
-  },
-  {
-    id: 'f5a6b7c8-d9e0-1234-5678-901234abcdef',
-    tenantId: DEFAULT_TENANT_ID,
-    patientId: 'c2d3e4f5-a6b7-8901-2345-678901abcdef',
-    patientName: 'Carlos Mendes',
-    patientPhone: '+1-516-555-0012',
-    date: '2026-05-19',
-    time: '14:00',
-    duration: 30,
-    status: 'PENDING',
-    type: 'CONSULTATION',
-    providerName: 'Dr. Arthur Mendes',
-    totalAmount: 90.00,
-    insuranceVerified: false,
-    notes: 'Consultation for crown replacement.',
-    createdAt: '2026-05-17T16:00:00Z'
-  }
-]
-
-const INITIAL_CAMPAIGNS: Campaign[] = [
-  {
-    id: '01234567-89ab-cdef-0123-456789abcdef',
-    tenantId: DEFAULT_TENANT_ID,
-    name: 'Spring Whitening Special',
-    channel: 'WHATSAPP',
-    status: 'SENT',
-    segment: 'Loyal Patients',
-    recipientCount: 142,
-    sentCount: 140,
-    revenue: 2800.00,
-    message: 'Get 25% off our premium in-office whitening this Spring! Click to schedule: clinic.guileo.ai/whitening',
-    sentAt: '2026-05-10T10:00:00Z',
-    createdAt: '2026-05-08T09:00:00Z'
-  },
-  {
-    id: '12345678-9abc-def0-1234-567890abcdef',
-    tenantId: DEFAULT_TENANT_ID,
-    name: 'Bi-Annual Recall Winback',
-    channel: 'VOICE',
-    status: 'SCHEDULED',
-    segment: 'Inactive (6mo+)',
-    recipientCount: 88,
-    sentCount: 0,
-    message: 'Hello, this is Arthur from Origem Dental. We noticed it has been over 6 months since your last clean. Call back to book your recall appointment today!',
-    scheduledAt: '2026-05-22T09:00:00Z',
-    createdAt: '2026-05-15T14:00:00Z'
-  }
-]
-
-const INITIAL_CALL_LOGS: CallLog[] = [
-  {
-    id: '23456789-abcd-ef01-2345-678901abcdef',
-    tenantId: DEFAULT_TENANT_ID,
-    patientName: 'Maria Silva',
-    phone: '+1-718-555-1212',
-    timestamp: '2026-05-18T08:45:00Z',
-    duration: '1m 45s',
-    status: 'completed',
-    recordingUrl: 'https://vapi-recordings.s3.amazonaws.com/origem/call-1.mp3',
-    transcript: 'Arthur: Origem Clinic, how can I help you today?\nMaria: Hi, I want to confirm my 9 AM appointment.\nArthur: Certainly! You are confirmed for 9 AM today with Dr. Mendes.',
-    summary: 'Patient called to confirm their 9:00 AM root canal checkup.',
-    actionRequired: false
-  },
-  {
-    id: '34567890-bcde-f012-3456-789012abcdef',
-    tenantId: DEFAULT_TENANT_ID,
-    patientName: 'Carlos Mendes',
-    phone: '+1-516-555-0012',
-    timestamp: '2026-05-18T10:15:00Z',
-    duration: '2m 10s',
-    status: 'completed',
-    recordingUrl: 'https://vapi-recordings.s3.amazonaws.com/origem/call-2.mp3',
-    transcript: 'Arthur: Hello, how can I help you?\nCarlos: Hi, my filling fell out and my tooth really hurts. Do you have any emergency appointments tomorrow?\nArthur: Yes, I can book you for 2:00 PM tomorrow. Does that work?\nCarlos: Yes, thank you.',
-    summary: 'Patient reported toothache and requested an emergency appointment. Booked for tomorrow 2 PM.',
-    actionRequired: true
-  }
-]
 
 // =========================================================================
 // MAPPING HELPER FUNCTIONS
@@ -362,18 +182,44 @@ function mapCampaignFromDb(row: any): Campaign {
 }
 
 function mapCallLogFromDb(row: any): CallLog {
+  const durSec = row.duration_seconds || 0
+  const mins = Math.floor(durSec / 60)
+  const secs = Math.floor(durSec % 60)
+  const durDisplay = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
+
+  let transcriptText: string | undefined
+  if (row.transcript) {
+    transcriptText = typeof row.transcript === 'string' ? row.transcript : JSON.stringify(row.transcript)
+  }
+
+  // Map Vapi end statuses to completed/missed properly
+  const isCompleted = 
+    row.status === 'completed' || 
+    row.status === 'answered' || 
+    row.status === 'customer-ended-call' || 
+    row.status === 'assistant-ended-call'
+
   return {
     id: row.id,
-    tenantId: row.tenant_id,
-    patientName: row.patient_name || 'Unknown Patient',
-    phone: row.phone,
-    timestamp: row.created_at || '',
-    duration: row.duration || '0s',
-    status: row.status === 'answered' || row.status === 'completed' ? 'completed' : 'missed',
+    tenantId: row.tenant_id || DEFAULT_TENANT_ID,
+    patientName: row.customer_name || 'Unknown Caller',
+    phone: row.customer_phone || '',
+    // Use created_at for date filtering as per requirements
+    timestamp: row.created_at || row.started_at || '',
+    startedAt: row.started_at || row.created_at || '',
+    durationSeconds: durSec,
+    duration: durDisplay,
+    status: isCompleted ? 'completed' : 'missed',
+    rawStatus: row.status || undefined,
+    costUsd: Number(row.cost_usd || 0),
+    source: row.source || 'inbound',
     recordingUrl: row.recording_url || undefined,
-    transcript: row.transcript || undefined,
+    transcript: transcriptText,
     summary: row.summary || undefined,
-    actionRequired: row.action_required || false
+    type: row.type || undefined,
+    assistantId: row.assistantId || undefined,
+    vapiAccount: row.vapi_account || 'normal',
+    actionRequired: false
   }
 }
 
@@ -390,25 +236,23 @@ function generateUUID() {
 }
 
 export const useClinicStore = create<ClinicState>((set, get) => ({
-  info: INITIAL_CLINIC_INFO,
-  patients: INITIAL_PATIENTS,
-  appointments: INITIAL_APPOINTMENTS,
-  campaigns: INITIAL_CAMPAIGNS,
-  callLogs: INITIAL_CALL_LOGS,
+  info: DEFAULT_CLINIC_INFO,
+  patients: [],
+  appointments: [],
+  campaigns: [],
+  callLogs: [],
   isLoading: false,
+  dateRange: getDefaultDateRange(),
+
+  setDateRange: (range) => set({ dateRange: range }),
 
   bootstrapData: async () => {
     set({ isLoading: true })
     try {
-      // 1. Fetch clinic info (seeds if empty)
       await get().fetchClinicInfo()
-      // 2. Fetch patients (seeds if empty - must run before appointments)
       await get().fetchPatients()
-      // 3. Fetch appointments (seeds if empty - safe now that patients are loaded)
       await get().fetchAppointments()
-      // 4. Fetch campaigns (seeds if empty)
       await get().fetchCampaigns()
-      // 5. Fetch call logs (seeds if empty)
       await get().fetchCallLogs()
     } catch (err) {
       console.warn('Error bootstrapping clinic data:', err)
@@ -418,7 +262,6 @@ export const useClinicStore = create<ClinicState>((set, get) => ({
   },
 
   fetchClinicInfo: async () => {
-    set({ isLoading: true })
     try {
       const { data, error } = await supabase
         .from('clinics')
@@ -430,137 +273,85 @@ export const useClinicStore = create<ClinicState>((set, get) => ({
 
       if (data) {
         set({ info: mapClinicInfoFromDb(data) })
-      } else {
-        // Seed initial clinic in Supabase
-        const defaultInfo = get().info
-        const { error: insertErr } = await supabase
-          .from('clinics')
-          .insert({
-            id: DEFAULT_TENANT_ID,
-            name: defaultInfo.name,
-            address: defaultInfo.address,
-            phone: defaultInfo.phone,
-            category: defaultInfo.category,
-            voice_persona: defaultInfo.voicePersona,
-            agent_language: defaultInfo.agentLanguage,
-            greeting_text: defaultInfo.greetingText,
-            agent_temp: Number(defaultInfo.agentTemp),
-            interrupt_sens: defaultInfo.interruptSens,
-            wa_confirmations: defaultInfo.waConfirmations,
-            sms_no_show_alerts: defaultInfo.smsNoShowAlerts,
-            auto_insurance_verify: defaultInfo.autoInsuranceVerify,
-            churn_risk_analytics: defaultInfo.churnRiskAnalytics,
-            stripe_publishable_key: defaultInfo.stripePublishableKey,
-            stripe_secret_key: defaultInfo.stripeSecretKey
-          })
-        if (insertErr) console.warn('Supabase seed clinic failed:', insertErr)
       }
     } catch (err) {
-      console.warn('Supabase fetchClinicInfo fallback:', err)
-    } finally {
-      set({ isLoading: false })
+      console.warn('Supabase fetchClinicInfo error:', err)
     }
   },
 
   fetchPatients: async () => {
-    set({ isLoading: true })
     try {
       const { data, error } = await supabase
         .from('patients')
-        .select('*')
-        .eq('tenant_id', DEFAULT_TENANT_ID)
-
-      if (error) throw error
-
-      if (data && data.length > 0) {
-        set({ patients: data.map(mapPatientFromDb) })
-      } else {
-        // Fallback to local mockup state if database is empty
-        set({ patients: INITIAL_PATIENTS })
-      }
-    } catch (err) {
-      console.warn('Supabase fetchPatients fallback:', err)
-    } finally {
-      set({ isLoading: false })
-    }
-  },
-
-  fetchAppointments: async () => {
-    set({ isLoading: true })
-    try {
-      const { data, error } = await supabase
-        .from('appointments')
-        .select('*')
-        .eq('tenant_id', DEFAULT_TENANT_ID)
-
-      if (error) throw error
-
-      if (data && data.length > 0) {
-        const patients = get().patients
-        const mapped = data.map(row => {
-          const matchedPat = patients.find(p => p.id === row.patient_id)
-          return mapAppointmentFromDb(
-            row, 
-            matchedPat ? matchedPat.name : 'Unknown Patient', 
-            matchedPat ? matchedPat.phone : ''
-          )
-        })
-        set({ appointments: mapped })
-      } else {
-        // Fallback to local mockup state if database is empty
-        set({ appointments: INITIAL_APPOINTMENTS })
-      }
-    } catch (err) {
-      console.warn('Supabase fetchAppointments fallback:', err)
-    } finally {
-      set({ isLoading: false })
-    }
-  },
-
-  fetchCampaigns: async () => {
-    set({ isLoading: true })
-    try {
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select('*')
-        .eq('tenant_id', DEFAULT_TENANT_ID)
-
-      if (error) throw error
-
-      if (data && data.length > 0) {
-        set({ campaigns: data.map(mapCampaignFromDb) })
-      } else {
-        // Fallback to local mockup state if database is empty
-        set({ campaigns: INITIAL_CAMPAIGNS })
-      }
-    } catch (err) {
-      console.warn('Supabase fetchCampaigns fallback:', err)
-    } finally {
-      set({ isLoading: false })
-    }
-  },
-
-  fetchCallLogs: async () => {
-    set({ isLoading: true })
-    try {
-      const { data, error } = await supabase
-        .from('call_logs')
         .select('*')
         .eq('tenant_id', DEFAULT_TENANT_ID)
         .order('created_at', { ascending: false })
 
       if (error) throw error
 
-      if (data && data.length > 0) {
-        set({ callLogs: data.map(mapCallLogFromDb) })
-      } else {
-        // Fallback to local mockup state if database is empty
-        set({ callLogs: INITIAL_CALL_LOGS })
-      }
+      set({ patients: (data || []).map(mapPatientFromDb) })
     } catch (err) {
-      console.warn('Supabase fetchCallLogs fallback:', err)
-    } finally {
-      set({ isLoading: false })
+      console.warn('Supabase fetchPatients error:', err)
+      set({ patients: [] })
+    }
+  },
+
+  fetchAppointments: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('tenant_id', DEFAULT_TENANT_ID)
+        .order('date', { ascending: false })
+
+      if (error) throw error
+
+      const patients = get().patients
+      const mapped = (data || []).map(row => {
+        const matchedPat = patients.find(p => p.id === row.patient_id)
+        return mapAppointmentFromDb(
+          row,
+          matchedPat ? matchedPat.name : (row.patient_name || 'Unknown Patient'),
+          matchedPat ? matchedPat.phone : (row.patient_phone || '')
+        )
+      })
+      set({ appointments: mapped })
+    } catch (err) {
+      console.warn('Supabase fetchAppointments error:', err)
+      set({ appointments: [] })
+    }
+  },
+
+  fetchCampaigns: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('campaigns')
+        .select('*')
+        .eq('tenant_id', DEFAULT_TENANT_ID)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      set({ campaigns: (data || []).map(mapCampaignFromDb) })
+    } catch (err) {
+      console.warn('Supabase fetchCampaigns error:', err)
+      set({ campaigns: [] })
+    }
+  },
+
+  fetchCallLogs: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('vapi_call_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      set({ callLogs: (data || []).map(mapCallLogFromDb) })
+    } catch (err) {
+      console.warn('Supabase fetchCallLogs error:', err)
+      set({ callLogs: [] })
     }
   },
 
@@ -571,8 +362,7 @@ export const useClinicStore = create<ClinicState>((set, get) => ({
       id: tempId,
       createdAt: new Date().toISOString()
     }
-    // Update local state first for instant response
-    set(state => ({ patients: [...state.patients, newPatient] }))
+    set(state => ({ patients: [newPatient, ...state.patients] }))
 
     try {
       const { data, error } = await supabase
@@ -602,26 +392,21 @@ export const useClinicStore = create<ClinicState>((set, get) => ({
 
       if (error) {
         if (error.code === '23505') {
-          // Patient already exists! Let's fetch their existing ID
-          const { data: existingPat, error: fetchErr } = await supabase
+          const { data: existingPat } = await supabase
             .from('patients')
             .select('id')
             .eq('tenant_id', DEFAULT_TENANT_ID)
             .eq('phone', patient.phone)
             .maybeSingle()
 
-          if (!fetchErr && existingPat) {
-            // Update local state to remove the duplicate local temp entry
-            set(state => ({
-              patients: state.patients.filter(p => p.id !== tempId)
-            }))
+          if (existingPat) {
+            set(state => ({ patients: state.patients.filter(p => p.id !== tempId) }))
             return existingPat.id
           }
         }
         throw error
       }
       if (data) {
-        // Swap tempId with final DB UUID
         const finalPatient = mapPatientFromDb(data)
         set(state => ({
           patients: state.patients.map(p => p.id === tempId ? finalPatient : p)
@@ -640,8 +425,7 @@ export const useClinicStore = create<ClinicState>((set, get) => ({
       id: tempId,
       createdAt: new Date().toISOString()
     }
-    // Update local state first
-    set(state => ({ appointments: [...state.appointments, newApt] }))
+    set(state => ({ appointments: [newApt, ...state.appointments] }))
 
     try {
       let dbStatus = appointment.status === 'NO_SHOW' ? 'NOSHOW' : appointment.status
@@ -668,8 +452,8 @@ export const useClinicStore = create<ClinicState>((set, get) => ({
       if (error) throw error
       if (data) {
         const finalApt = mapAppointmentFromDb(
-          data, 
-          appointment.patientName, 
+          data,
+          appointment.patientName,
           appointment.patientPhone
         )
         set(state => ({
@@ -684,7 +468,7 @@ export const useClinicStore = create<ClinicState>((set, get) => ({
 
   updateAppointmentStatus: async (id, status) => {
     set(state => ({
-      appointments: state.appointments.map(apt => 
+      appointments: state.appointments.map(apt =>
         apt.id === id ? { ...apt, status } : apt
       )
     }))
@@ -721,7 +505,6 @@ export const useClinicStore = create<ClinicState>((set, get) => ({
   },
 
   triggerReminder: async (id) => {
-    // Audit-trail action in audit logs for HIPAA compliance
     try {
       const { error } = await supabase
         .from('hipaa_audit_logs')
@@ -771,21 +554,10 @@ export const useClinicStore = create<ClinicState>((set, get) => ({
 
   updateCallLogAction: async (id, actionRequired) => {
     set(state => ({
-      callLogs: state.callLogs.map(log => 
+      callLogs: state.callLogs.map(log =>
         log.id === id ? { ...log, actionRequired } : log
       )
     }))
-
-    try {
-      const { error } = await supabase
-        .from('call_logs')
-        .update({ action_required: actionRequired })
-        .eq('id', id)
-
-      if (error) throw error
-    } catch (err) {
-      console.warn('Supabase updateCallLogAction error:', err)
-    }
   },
 
   addCallLog: async (callLog) => {
@@ -793,24 +565,29 @@ export const useClinicStore = create<ClinicState>((set, get) => ({
     const newLog: CallLog = {
       ...callLog,
       id: tempId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      startedAt: new Date().toISOString()
     }
     set(state => ({ callLogs: [newLog, ...state.callLogs] }))
 
     try {
       const { data, error } = await supabase
-        .from('call_logs')
+        .from('vapi_call_logs')
         .insert({
           id: tempId,
-          tenant_id: DEFAULT_TENANT_ID,
-          patient_name: callLog.patientName,
-          phone: callLog.phone,
-          duration: callLog.duration,
+          vapi_account: 'clinic-calls',
+          customer_name: callLog.patientName,
+          customer_phone: callLog.phone,
+          started_at: new Date().toISOString(),
+          duration_seconds: callLog.durationSeconds || 0,
           status: callLog.status === 'completed' ? 'completed' : 'missed',
+          cost_usd: callLog.costUsd || 0,
+          source: callLog.source || 'inbound',
           recording_url: callLog.recordingUrl || null,
           transcript: callLog.transcript || null,
           summary: callLog.summary || null,
-          action_required: callLog.actionRequired
+          type: callLog.type || 'inbound',
+          assistantId: callLog.assistantId || null
         })
         .select()
         .single()
@@ -908,3 +685,61 @@ export const useClinicStore = create<ClinicState>((set, get) => ({
     }
   }
 }))
+
+// =========================================================================
+// DATE-RANGE FILTER HELPERS
+// =========================================================================
+
+function parseDateSafe(dateStr: string | undefined | null) {
+  if (!dateStr) return null
+  const d = new Date(dateStr)
+  return isNaN(d.getTime()) ? null : d
+}
+
+/**
+ * Generic date filter.
+ * dateField: which property to use for filtering.
+ * Appointments use 'date', patients use 'createdAt', call logs use 'timestamp' (mapped from created_at)
+ */
+export function filterByDateRange<T extends Record<string, any>>(
+  items: T[],
+  start: string,
+  end: string,
+  dateField?: string
+): T[] {
+  const startDate = parseDateSafe(start)
+  const endDate = parseDateSafe(end)
+  if (!startDate || !endDate) return items
+
+  return items.filter(item => {
+    // Priority: explicit dateField > 'date' > 'timestamp' > 'createdAt'
+    const rawVal = dateField 
+      ? item[dateField]
+      : item['date'] ?? item['timestamp'] ?? item['createdAt'] ?? null
+
+    const target = parseDateSafe(rawVal)
+    if (!target) return false
+    return isWithinInterval(target, {
+      start: startOfDay(startDate),
+      end: endOfDay(endDate)
+    })
+  })
+}
+
+export function useFilteredAppointments() {
+  const { appointments, dateRange } = useClinicStore()
+  // Appointments filter uses the `date` field (YYYY-MM-DD)
+  return filterByDateRange(appointments, dateRange.start, dateRange.end, 'date')
+}
+
+export function useFilteredCallLogs() {
+  const { callLogs, dateRange } = useClinicStore()
+  // Call logs filter uses `timestamp` which is mapped from `created_at`
+  return filterByDateRange(callLogs, dateRange.start, dateRange.end, 'timestamp')
+}
+
+export function useFilteredPatients() {
+  const { patients, dateRange } = useClinicStore()
+  // Patients filter uses `createdAt` 
+  return filterByDateRange(patients, dateRange.start, dateRange.end, 'createdAt')
+}

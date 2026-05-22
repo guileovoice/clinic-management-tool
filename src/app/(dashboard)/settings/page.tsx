@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/select'
 import { useClinicStore } from '@/lib/stores/clinicStore'
 import { toast } from 'react-hot-toast'
+import { DateRangeFilter } from '@/components/shared/DateRangeFilter'
 
 export default function SettingsPage() {
   const { info, updateClinicInfo } = useClinicStore()
@@ -129,6 +130,11 @@ export default function SettingsPage() {
       <PageHeader 
         title="Guileo Clinic System Settings" 
         subtitle="Configure HIPAA compliance parameters, customize automated AI Voice greeting scripts, and manage Stripe credentials."
+        actions={
+          <div className="flex items-center gap-3">
+            <DateRangeFilter />
+          </div>
+        }
       />
 
       <Tabs defaultValue="general" className="w-full space-y-6">
