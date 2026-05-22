@@ -25,6 +25,8 @@ import { Input } from '@/components/ui/input'
 import { 
   Dialog, 
   DialogContent, 
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog'
 import { 
   Select, 
@@ -191,48 +193,48 @@ export default function CallLogsPage() {
       />
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* CALLS TODAY */}
-        <Card className="p-5 bg-surface border-border flex items-center justify-between relative overflow-hidden group hover:border-primary/40 transition-all duration-300">
+        <Card className="p-4 bg-surface border-border flex items-center justify-between relative overflow-hidden group hover:border-primary/40 transition-all duration-300">
           <div>
-            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Calls Today</p>
-            <h3 className="text-3xl font-black text-text-primary mt-2">{callsTodayCount}</h3>
+            <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Calls Today</p>
+            <h3 className="text-2xl font-black text-text-primary mt-1">{callsTodayCount}</h3>
           </div>
-          <div className="p-3 bg-primary/10 rounded-xl text-primary shrink-0 transition-transform group-hover:scale-110">
-            <Phone className="w-5 h-5" />
+          <div className="p-2.5 bg-primary/10 rounded-xl text-primary shrink-0 transition-transform group-hover:scale-110">
+            <Phone className="w-4 h-4" />
           </div>
         </Card>
         
         {/* TOTAL COST (USD) */}
-        <Card className="p-5 bg-surface border-border flex items-center justify-between relative overflow-hidden group hover:border-emerald-500/40 transition-all duration-300">
+        <Card className="p-4 bg-surface border-border flex items-center justify-between relative overflow-hidden group hover:border-emerald-500/40 transition-all duration-300">
           <div>
-            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Total Cost (USD)</p>
-            <h3 className="text-3xl font-black text-emerald-400 mt-2">${totalCost.toFixed(2)}</h3>
+            <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Total Cost (USD)</p>
+            <h3 className="text-2xl font-black text-emerald-400 mt-1">${totalCost.toFixed(2)}</h3>
           </div>
-          <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400 shrink-0 transition-transform group-hover:scale-110">
-            <DollarSign className="w-5 h-5" />
+          <div className="p-2.5 bg-emerald-500/10 rounded-xl text-emerald-400 shrink-0 transition-transform group-hover:scale-110">
+            <DollarSign className="w-4 h-4" />
           </div>
         </Card>
 
         {/* SUCCESSFUL CALLS */}
-        <Card className="p-5 bg-surface border-border flex items-center justify-between relative overflow-hidden group hover:border-violet-500/40 transition-all duration-300">
+        <Card className="p-4 bg-surface border-border flex items-center justify-between relative overflow-hidden group hover:border-violet-500/40 transition-all duration-300">
           <div>
-            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Successful Calls</p>
-            <h3 className="text-3xl font-black text-text-primary mt-2">{successfulCallsCount}</h3>
+            <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Successful Calls</p>
+            <h3 className="text-2xl font-black text-text-primary mt-1">{successfulCallsCount}</h3>
           </div>
-          <div className="p-3 bg-violet-500/10 rounded-xl text-violet-500 shrink-0 transition-transform group-hover:scale-110">
-            <ArrowUpRight className="w-5 h-5" />
+          <div className="p-2.5 bg-violet-500/10 rounded-xl text-violet-500 shrink-0 transition-transform group-hover:scale-110">
+            <ArrowUpRight className="w-4 h-4" />
           </div>
         </Card>
 
         {/* AVG DURATION */}
-        <Card className="p-5 bg-surface border-border flex items-center justify-between relative overflow-hidden group hover:border-amber-500/40 transition-all duration-300">
+        <Card className="p-4 bg-surface border-border flex items-center justify-between relative overflow-hidden group hover:border-amber-500/40 transition-all duration-300">
           <div>
-            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Avg Duration</p>
-            <h3 className="text-3xl font-black text-text-primary mt-2">{avgDurationDisplay}</h3>
+            <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Avg Duration</p>
+            <h3 className="text-2xl font-black text-text-primary mt-1">{avgDurationDisplay}</h3>
           </div>
-          <div className="p-3 bg-amber-500/10 rounded-xl text-amber-500 shrink-0 transition-transform group-hover:scale-110">
-            <Clock className="w-5 h-5" />
+          <div className="p-2.5 bg-amber-500/10 rounded-xl text-amber-500 shrink-0 transition-transform group-hover:scale-110">
+            <Clock className="w-4 h-4" />
           </div>
         </Card>
       </div>
@@ -285,7 +287,7 @@ export default function CallLogsPage() {
               {filteredCalls.length > 0 ? (
                 filteredCalls.map(log => {
                   return (
-                    <tr key={log.id} className="hover:bg-surface2/20 transition-colors group">
+                    <tr key={log.id} onClick={() => { setActiveCallDetails(log); setIsPlaying(false); setCurrentTime(0); setPlaybackSpeed(1) }} className="hover:bg-surface2/20 transition-colors group cursor-pointer">
                       {/* Customer */}
                       <td className="p-4 pl-6">
                         <div className="flex items-center gap-3">
@@ -370,7 +372,10 @@ export default function CallLogsPage() {
 
       {/* Details Dialog Modal */}
       <Dialog open={!!activeCallDetails} onOpenChange={(open) => { if (!open) setActiveCallDetails(null) }}>
-        <DialogContent className="bg-[#12121A] border border-border/80 p-6 rounded-2xl shadow-2xl max-w-xl text-text-primary outline-none max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-[#12121A] border border-border/80 p-6 rounded-2xl shadow-2xl max-w-2xl text-text-primary outline-none max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Call Details</DialogTitle>
+          </DialogHeader>
           {activeCallDetails && (
             <div className="space-y-6">
               {/* Badges and Call ID */}

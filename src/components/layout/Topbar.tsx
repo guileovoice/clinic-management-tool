@@ -142,7 +142,7 @@ export function Topbar() {
           <DropdownMenuTrigger asChild>
             <div className="flex items-center gap-2 p-1 pl-2 pr-1 rounded-full border border-border hover:bg-surface2 transition-all cursor-pointer outline-none">
               <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-extrabold uppercase shrink-0">
-                {info.name.split(' ').map(n => n[0]).join('')}
+                {mounted ? info.name.split(' ').map(n => n[0]).join('') : ''}
               </div>
               <div className="hidden md:block text-left shrink-0 max-w-[160px]">
                 <p className="text-[10px] font-black text-text-primary uppercase tracking-wide leading-none truncate">{info.name}</p>
