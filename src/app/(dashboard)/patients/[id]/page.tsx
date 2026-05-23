@@ -19,7 +19,7 @@ import {
   UserX,
   CreditCard
 } from 'lucide-react'
-import { useClinicStore } from '@/lib/stores/clinicStore'
+import { useClinicStore, getServiceLabel } from '@/lib/stores/clinicStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -30,7 +30,7 @@ import { toast } from 'react-hot-toast'
 export default function PatientDetailPage() {
   const { id } = useParams()
   const router = useRouter()
-  const { patients, appointments, callLogs } = useClinicStore()
+  const { patients, appointments, callLogs, services } = useClinicStore()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -130,7 +130,11 @@ export default function PatientDetailPage() {
             <div className="space-y-1">
               <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Patient Since</p>
               <h4 className="text-xl font-bold text-text-primary">2025</h4>
-              <p className="text-[9px] text-text-muted">{mounted ? format(new Date(patient.firstAppointmentAt), 'MMM yyyy') : ''}</p>
+              <p className="text-[9px] text-text-muted">
+                {mounted && patient.firstAppointmentAt && !isNaN(new Date(patient.firstAppointmentAt).getTime())
+                  ? format(new Date(patient.firstAppointmentAt), 'MMM yyyy')
+                  : 'New Patient'}
+              </p>
             </div>
           </div>
         </div>
@@ -215,7 +219,7 @@ export default function PatientDetailPage() {
                       </div>
                       <div>
                         <p className="text-sm font-black text-text-primary">{apt.date} · {apt.time}</p>
-                        <p className="text-xs text-text-muted font-semibold">Assigned: {apt.providerName} · Procedure: {apt.type}</p>
+                        <p className="text-xs text-text-muted font-semibold">Assigned: {apt.providerName} · Procedure: {getServiceLabel(apt.type, services)}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4 shrink-0">

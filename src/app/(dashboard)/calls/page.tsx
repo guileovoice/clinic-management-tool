@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { 
   Phone, 
   Search, 
@@ -98,29 +98,7 @@ export default function CallLogsPage() {
     return matchesSearch && matchesStatus
   })
 
-  // Audio playback simulated ticking
-  useEffect(() => {
-    let interval: NodeJS.Timeout
-    if (isPlaying && activeCallDetails) {
-      const max = activeCallDetails.durationSeconds || (() => {
-        if (!activeCallDetails.duration) return 100
-        const parts = activeCallDetails.duration.match(/(\d+)m\s*(\d+)s/)
-        if (parts) return parseInt(parts[1]) * 60 + parseInt(parts[2])
-        return 100
-      })()
-
-      interval = setInterval(() => {
-        setCurrentTime(prev => {
-          if (prev >= max) {
-            setIsPlaying(false)
-            return 0
-          }
-          return Math.min(prev + 1, max)
-        })
-      }, 1000 / playbackSpeed)
-    }
-    return () => clearInterval(interval)
-  }, [isPlaying, playbackSpeed, activeCallDetails])
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   const durationSec = activeCallDetails ? (activeCallDetails.durationSeconds || (() => {
     if (!activeCallDetails.duration) return 100
@@ -128,6 +106,79 @@ export default function CallLogsPage() {
     if (parts) return parseInt(parts[1]) * 60 + parseInt(parts[2])
     return 100
   })()) : 100
+
+  // Sync play/pause state with audio element
+  useEffect(() => {
+    if (!audioRef.current) return
+    if (isPlaying) {
+      audioRef.current.play().catch(err => {
+        console.warn("Failed to play audio:", err)
+        setIsPlaying(false)
+      })
+    } else {
+      audioRef.current.pause()
+    }
+  }, [isPlaying])
+
+  // Sync playback speed
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = playbackSpeed
+    }
+  }, [playbackSpeed])
+
+  // Sync active call change
+  useEffect(() => {
+    setIsPlaying(false)
+    setCurrentTime(0)
+    setPlaybackSpeed(1)
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+    }
+  }, [activeCallDetails])
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime)
+    }
+  }
+
+  const handleAudioEnded = () => {
+    setIsPlaying(false)
+    setCurrentTime(0)
+  }
+
+  const handleTimeChange = (newTime: number) => {
+    setCurrentTime(newTime)
+    if (audioRef.current) {
+      audioRef.current.currentTime = newTime
+    }
+  }
+
+  const handleSkipBackward = () => {
+    const newTime = Math.max(0, currentTime - 15)
+    setCurrentTime(newTime)
+    if (audioRef.current) {
+      audioRef.current.currentTime = newTime
+    }
+  }
+
+  const handleSkipForward = () => {
+    const newTime = Math.min(durationSec, currentTime + 15)
+    setCurrentTime(newTime)
+    if (audioRef.current) {
+      audioRef.current.currentTime = newTime
+    }
+  }
+
+  const handlePlayPause = () => {
+    if (!activeCallDetails?.recordingUrl) {
+      toast.error("No audio recording URL available for this call.")
+      return
+    }
+    setIsPlaying(!isPlaying)
+  }
 
   const formatSecondsToMinutes = (seconds: number) => {
     const m = Math.floor(seconds / 60)
@@ -372,12 +423,21 @@ export default function CallLogsPage() {
 
       {/* Details Dialog Modal */}
       <Dialog open={!!activeCallDetails} onOpenChange={(open) => { if (!open) setActiveCallDetails(null) }}>
-        <DialogContent className="bg-[#12121A] border border-border/80 p-6 rounded-2xl shadow-2xl max-w-2xl text-text-primary outline-none max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-[#12121A] border border-border/80 p-6 rounded-2xl shadow-2xl max-w-3xl text-text-primary outline-none max-h-[90vh] overflow-y-auto">
           <DialogHeader className="sr-only">
             <DialogTitle>Call Details</DialogTitle>
           </DialogHeader>
           {activeCallDetails && (
             <div className="space-y-6">
+              {/* Hidden HTML5 Audio Element */}
+              <audio 
+                ref={audioRef} 
+                src={activeCallDetails.recordingUrl} 
+                onTimeUpdate={handleTimeUpdate}
+                onEnded={handleAudioEnded}
+                preload="auto"
+              />
+
               {/* Badges and Call ID */}
               <div className="flex items-center justify-between">
                 <span className="bg-primary/20 text-primary text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-primary/20">
@@ -439,7 +499,7 @@ export default function CallLogsPage() {
                   <div className="flex items-center gap-3">
                     {/* Skip Back 15s */}
                     <button 
-                      onClick={() => setCurrentTime(prev => Math.max(0, prev - 15))}
+                      onClick={handleSkipBackward}
                       className="p-2 text-text-muted hover:text-text-primary hover:bg-surface2 rounded-lg transition-all cursor-pointer"
                     >
                       <RotateCcw className="w-4 h-4" />
@@ -447,7 +507,7 @@ export default function CallLogsPage() {
 
                     {/* Play / Pause */}
                     <button 
-                      onClick={() => setIsPlaying(!isPlaying)}
+                      onClick={handlePlayPause}
                       className="w-10 h-10 rounded-full bg-primary hover:bg-primary-dark text-white flex items-center justify-center shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer"
                     >
                       {isPlaying ? <Pause className="w-4 h-4 fill-white" /> : <Play className="w-4 h-4 fill-white ml-0.5" />}
@@ -455,7 +515,7 @@ export default function CallLogsPage() {
 
                     {/* Skip Forward 15s */}
                     <button 
-                      onClick={() => setCurrentTime(prev => Math.min(durationSec, prev + 15))}
+                      onClick={handleSkipForward}
                       className="p-2 text-text-muted hover:text-text-primary hover:bg-surface2 rounded-lg transition-all cursor-pointer"
                     >
                       <RotateCw className="w-4 h-4" />
@@ -480,7 +540,18 @@ export default function CallLogsPage() {
                   <div>
                     <button 
                       onClick={() => {
-                        toast.success("Downloading decrypted recording file...")
+                        if (activeCallDetails.recordingUrl) {
+                          const link = document.createElement('a')
+                          link.href = activeCallDetails.recordingUrl
+                          link.download = `recording-${activeCallDetails.id}.wav`
+                          link.target = '_blank'
+                          document.body.appendChild(link)
+                          link.click()
+                          document.body.removeChild(link)
+                          toast.success("Downloading recording file...")
+                        } else {
+                          toast.error("No recording file available to download.")
+                        }
                       }}
                       className="flex items-center gap-2 px-3 py-1.5 bg-surface border border-border rounded-lg text-[10px] font-black text-text-primary uppercase tracking-wider hover:bg-surface2 transition-all cursor-pointer"
                     >
@@ -500,7 +571,7 @@ export default function CallLogsPage() {
                       min={0}
                       max={durationSec}
                       value={currentTime}
-                      onChange={(e) => setCurrentTime(Number(e.target.value))}
+                      onChange={(e) => handleTimeChange(Number(e.target.value))}
                       className="w-full h-1.5 bg-border rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none"
                     />
                   </div>

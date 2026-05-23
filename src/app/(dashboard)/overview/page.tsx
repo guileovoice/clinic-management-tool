@@ -17,7 +17,7 @@ import {
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { useClinicStore, useFilteredAppointments, useFilteredCallLogs } from '@/lib/stores/clinicStore'
+import { useClinicStore, useFilteredAppointments, useFilteredCallLogs, getServiceLabel } from '@/lib/stores/clinicStore'
 import { DateRangeFilter } from '@/components/shared/DateRangeFilter'
 import { toast } from 'react-hot-toast'
 import { format } from 'date-fns'
@@ -39,7 +39,7 @@ import {
 const COLORS = ['#6C3CE1', '#10B981', '#3B82F6', '#F59E0B']
 
 export default function ClinicOverviewPage() {
-  const { patients } = useClinicStore()
+  const { patients, services } = useClinicStore()
   const filteredApts = useFilteredAppointments()
   const filteredCallLogs = useFilteredCallLogs()
 
@@ -92,7 +92,7 @@ export default function ClinicOverviewPage() {
       `"${apt.time}"`,
       apt.duration,
       `"${apt.status}"`,
-      `"${apt.type}"`,
+      `"${getServiceLabel(apt.type, services)}"`,
       `"${apt.providerName}"`,
       apt.insuranceVerified ? "YES" : "NO",
       apt.totalAmount.toFixed(2)
@@ -384,7 +384,7 @@ export default function ClinicOverviewPage() {
                           ? 'bg-blue-500/10 text-blue-500'
                           : 'bg-amber-500/10 text-amber-500'
                       }`}>{apt.status}</span>
-                      <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-surface border border-border text-text-muted font-mono">{apt.type}</span>
+                      <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-surface border border-border text-text-muted font-mono">{getServiceLabel(apt.type, services)}</span>
                     </div>
                     <p className="text-xs text-text-muted leading-none font-medium">Assigned: {apt.providerName} · {apt.duration} mins</p>
                     {apt.notes && (

@@ -1,0 +1,232 @@
+[
+  {
+    "service_type": "CLEANING",
+    "service_label": "Teeth Cleaning",
+    "category": "Preventive",
+    "duration_min": 45,
+    "price_usd": 120,
+    "price_note": "Per session",
+    "enabled": true,
+    "requires_consultation": false
+  },
+  {
+    "service_type": "CHECKUP",
+    "service_label": "Dental Checkup / Exam",
+    "category": "Preventive",
+    "duration_min": 30,
+    "price_usd": 80,
+    "price_note": "Includes basic examination",
+    "enabled": true,
+    "requires_consultation": false
+  },
+  {
+    "service_type": "XRAY",
+    "service_label": "Dental X-Ray",
+    "category": "Preventive",
+    "duration_min": 20,
+    "price_usd": 60,
+    "price_note": "Per set of X-rays",
+    "enabled": true,
+    "requires_consultation": false
+  },
+  {
+    "service_type": "FILLING",
+    "service_label": "Tooth Filling",
+    "category": "Restorative",
+    "duration_min": 60,
+    "price_usd": 150,
+    "price_note": "Per tooth (composite resin)",
+    "enabled": true,
+    "requires_consultation": false
+  },
+  {
+    "service_type": "CROWN",
+    "service_label": "Dental Crown",
+    "category": "Restorative",
+    "duration_min": 90,
+    "price_usd": 1200,
+    "price_note": "Per crown (porcelain)",
+    "enabled": true,
+    "requires_consultation": true
+  },
+  {
+    "service_type": "ROOT_CANAL",
+    "service_label": "Root Canal Treatment",
+    "category": "Restorative",
+    "duration_min": 90,
+    "price_usd": 900,
+    "price_note": "Per tooth (excluding crown)",
+    "enabled": true,
+    "requires_consultation": true
+  },
+  {
+    "service_type": "EXTRACTION",
+    "service_label": "Tooth Extraction",
+    "category": "Restorative",
+    "duration_min": 45,
+    "price_usd": 200,
+    "price_note": "Simple extraction per tooth",
+    "enabled": true,
+    "requires_consultation": false
+  },
+  {
+    "service_type": "EXTRACTION_SURGICAL",
+    "service_label": "Surgical Tooth Extraction",
+    "category": "Restorative",
+    "duration_min": 75,
+    "price_usd": 350,
+    "price_note": "Impacted or complex cases",
+    "enabled": true,
+    "requires_consultation": true
+  },
+  {
+    "service_type": "WHITENING",
+    "service_label": "Teeth Whitening",
+    "category": "Cosmetic",
+    "duration_min": 60,
+    "price_usd": 350,
+    "price_note": "In-office whitening session",
+    "enabled": true,
+    "requires_consultation": false
+  },
+  {
+    "service_type": "VENEERS",
+    "service_label": "Dental Veneers",
+    "category": "Cosmetic",
+    "duration_min": 120,
+    "price_usd": 1000,
+    "price_note": "Per veneer (porcelain)",
+    "enabled": true,
+    "requires_consultation": true
+  },
+  {
+    "service_type": "CONSULTATION",
+    "service_label": "New Patient Consultation",
+    "category": "Consultation",
+    "duration_min": 30,
+    "price_usd": 50,
+    "price_note": "Fee waived if treatment booked same day",
+    "enabled": true,
+    "requires_consultation": false
+  },
+  {
+    "service_type": "FOLLOWUP",
+    "service_label": "Follow-Up Visit",
+    "category": "Consultation",
+    "duration_min": 20,
+    "price_usd": 0,
+    "price_note": "Free within 30 days of treatment",
+    "enabled": true,
+    "requires_consultation": false
+  },
+  {
+    "service_type": "ORTHODONTIC_CONSULT",
+    "service_label": "Orthodontic Consultation",
+    "category": "Orthodontics",
+    "duration_min": 45,
+    "price_usd": 0,
+    "price_note": "Free initial consultation",
+    "enabled": true,
+    "requires_consultation": false
+  },
+  {
+    "service_type": "INVISALIGN",
+    "service_label": "Invisalign Treatment",
+    "category": "Orthodontics",
+    "duration_min": 30,
+    "price_usd": 4500,
+    "price_note": "Full treatment (starting price)",
+    "enabled": true,
+    "requires_consultation": true
+  },
+  {
+    "service_type": "BRACES",
+    "service_label": "Traditional Braces",
+    "category": "Orthodontics",
+    "duration_min": 60,
+    "price_usd": 3500,
+    "price_note": "Full treatment (starting price)",
+    "enabled": true,
+    "requires_consultation": true
+  },
+  {
+    "service_type": "IMPLANT_CONSULT",
+    "service_label": "Dental Implant Consultation",
+    "category": "Implants",
+    "duration_min": 45,
+    "price_usd": 0,
+    "price_note": "Free initial consultation",
+    "enabled": true,
+    "requires_consultation": false
+  },
+  {
+    "service_type": "IMPLANT_PLACEMENT",
+    "service_label": "Dental Implant Placement",
+    "category": "Implants",
+    "duration_min": 120,
+    "price_usd": 2500,
+    "price_note": "Per implant (excluding crown)",
+    "enabled": true,
+    "requires_consultation": true
+  },
+  {
+    "service_type": "EMERGENCY",
+    "service_label": "Emergency Dental Visit",
+    "category": "Emergency",
+    "duration_min": 30,
+    "price_usd": 150,
+    "price_note": "Assessment fee applies toward treatment",
+    "enabled": true,
+    "requires_consultation": false
+  },
+  {
+    "service_type": "PEDIATRIC",
+    "service_label": "Pediatric Dental Visit",
+    "category": "Pediatric",
+    "duration_min": 30,
+    "price_usd": 90,
+    "price_note": "Ages 5–17",
+    "enabled": true,
+    "requires_consultation": false
+  },
+  {
+    "service_type": "DEEP_CLEANING",
+    "service_label": "Deep Cleaning (Scaling & Root Planing)",
+    "category": "Preventive",
+    "duration_min": 90,
+    "price_usd": 300,
+    "price_note": "Per quadrant",
+    "enabled": true,
+    "requires_consultation": false
+  },
+  {
+    "service_type": "NIGHT_GUARD",
+    "service_label": "Night Guard / Mouth Guard",
+    "category": "Restorative",
+    "duration_min": 30,
+    "price_usd": 400,
+    "price_note": "Custom fitted",
+    "enabled": true,
+    "requires_consultation": false
+  },
+  {
+    "service_type": "BONDING",
+    "service_label": "Dental Bonding",
+    "category": "Cosmetic",
+    "duration_min": 60,
+    "price_usd": 300,
+    "price_note": "Per tooth",
+    "enabled": true,
+    "requires_consultation": false
+  },
+  {
+    "service_type": "SEALANTS",
+    "service_label": "Dental Sealants",
+    "category": "Preventive",
+    "duration_min": 30,
+    "price_usd": 50,
+    "price_note": "Per tooth",
+    "enabled": true,
+    "requires_consultation": false
+  }
+]

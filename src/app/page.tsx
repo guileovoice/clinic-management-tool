@@ -37,6 +37,29 @@ const TIME_SLOTS = [
 export default function LandingPage() {
   const { addPatient, addAppointment } = useClinicStore()
 
+  const [dynamicServices, setDynamicServices] = useState<any[]>([])
+
+  React.useEffect(() => {
+    fetch('/api/services')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped = data.filter(s => s.enabled !== false).map(s => ({
+            id: s.service_type,
+            name: s.service_label,
+            duration: s.duration_min,
+            price: s.price_usd,
+            description: s.price_note || `${s.category} treatment`
+          }))
+          setDynamicServices(mapped)
+          setSelectedService(mapped[0])
+        }
+      })
+      .catch(err => console.warn("Failed to load dynamic services:", err))
+  }, [])
+
+  const activeServices = dynamicServices.length > 0 ? dynamicServices : SERVICES
+
   // Form Booking Wizard States
   const [step, setStep] = useState(1)
   const [selectedService, setSelectedService] = useState(SERVICES[0])
@@ -324,7 +347,7 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {SERVICES.map((srv) => (
+            {activeServices.map((srv) => (
               <div 
                 key={srv.id} 
                 className="p-6 bg-surface border border-border/60 rounded-2xl flex flex-col justify-between hover:border-primary/40 transition-all group"
@@ -436,7 +459,7 @@ export default function LandingPage() {
                 <div className="space-y-4 animate-in fade-in duration-300">
                   <h3 className="text-xs font-black uppercase tracking-widest text-text-muted mb-2">Select Your Required Treatment:</h3>
                   <div className="grid grid-cols-1 gap-3">
-                    {SERVICES.map((srv) => (
+                    {activeServices.map((srv) => (
                       <button
                         type="button"
                         key={srv.id}

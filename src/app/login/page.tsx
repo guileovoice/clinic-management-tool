@@ -51,7 +51,7 @@ export default function LoginPage() {
       }
       document.cookie = `user_session=${encodeURIComponent(
         JSON.stringify(sessionData)
-      )}; path=/; max-age=604800; samesite=lax;`
+      )}; path=/; max-age=3600; samesite=lax;`
 
       toast.success(`Welcome back, ${matchedUser.name}!`)
       

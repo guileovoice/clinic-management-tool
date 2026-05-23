@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { 
   Calendar as CalendarIcon, 
@@ -22,7 +22,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { useClinicStore } from '@/lib/stores/clinicStore'
+import { useClinicStore, getServiceLabel } from '@/lib/stores/clinicStore'
 import { DateRangeFilter } from '@/components/shared/DateRangeFilter'
 import { toast } from 'react-hot-toast'
 import { 
@@ -47,12 +47,30 @@ const TIMES = [
 ]
 
 export default function ClinicalCalendarPage() {
-  const { appointments, patients, addAppointment, updateAppointmentStatus, deleteAppointment, info } = useClinicStore()
+  const { appointments, patients, addAppointment, updateAppointmentStatus, deleteAppointment, info, services, dateRange, setDateRange } = useClinicStore()
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   
   // View mode and current month selection state
   const [viewMode, setViewMode] = useState<'day' | 'month'>('day')
   const [currentMonth, setCurrentMonth] = useState(new Date())
+
+  // Sync from global store dateRange to local selectedDate & currentMonth
+  useEffect(() => {
+    if (dateRange.start && dateRange.start !== selectedDate) {
+      setSelectedDate(dateRange.start)
+      const parsed = new Date(dateRange.start)
+      if (!isNaN(parsed.getTime())) {
+        setCurrentMonth(parsed)
+      }
+    }
+  }, [dateRange.start])
+
+  const handleSelectDate = (dateStr: string) => {
+    setSelectedDate(dateStr)
+    if (dateRange.start !== dateStr) {
+      setDateRange({ start: dateStr, end: dateStr })
+    }
+  }
 
   const handlePrevMonth = () => {
     setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
@@ -89,13 +107,49 @@ export default function ClinicalCalendarPage() {
   const [selectedSlot, setSelectedSlot] = useState<{ time: string } | null>(null)
   const [selectedApt, setSelectedApt] = useState<any | null>(null)
 
+  // Set default appointment type when opening the booking dialog
+  useEffect(() => {
+    if (isNewModalOpen) {
+      const activeServices = services.filter(s => s.enabled !== false)
+      if (activeServices.length > 0) {
+        const first = activeServices[0]
+        setAptType(first.service_type)
+        setAmount(String(first.price_usd))
+        setDuration(String(first.duration_min))
+      } else {
+        setAptType('CHECKUP')
+        setAmount('150')
+        setDuration('45')
+      }
+      setPatientId('')
+      setNotes('')
+    }
+  }, [isNewModalOpen, services])
+
   // Booking fields
   const [patientId, setPatientId] = useState('')
-  const [aptType, setAptType] = useState<'CHECKUP' | 'CONSULTATION' | 'PROCEDURE' | 'EMERGENCY'>('CHECKUP')
+  const [aptType, setAptType] = useState<string>('CHECKUP')
   const [providerName, setProviderName] = useState('Dr. Arthur Mendes')
   const [duration, setDuration] = useState('45')
   const [notes, setNotes] = useState('')
   const [amount, setAmount] = useState('150')
+
+  const handleAptTypeChange = (type: string) => {
+    setAptType(type)
+    const matchedSrv = services.find(
+      s => s.service_type === type || s.service_type?.toUpperCase() === type?.toUpperCase()
+    )
+    if (matchedSrv) {
+      setAmount(String(matchedSrv.price_usd))
+      setDuration(String(matchedSrv.duration_min))
+    } else {
+      const upper = type.toUpperCase()
+      if (upper === 'CHECKUP') { setAmount('150'); setDuration('45'); }
+      else if (upper === 'CONSULTATION') { setAmount('90'); setDuration('30'); }
+      else if (upper === 'PROCEDURE') { setAmount('320'); setDuration('60'); }
+      else if (upper === 'EMERGENCY') { setAmount('200'); setDuration('45'); }
+    }
+  }
 
   // Group appointments by time slot for the selected date (use all appointments, not date-filtered)
   const filteredApts = appointments.filter(apt => apt.date === selectedDate)
@@ -203,7 +257,7 @@ export default function ClinicalCalendarPage() {
             {viewMode === 'day' && (
               <div className="flex items-center bg-surface border border-border p-1.5 rounded-xl">
                 <button 
-                  onClick={() => setSelectedDate('2026-05-18')}
+                  onClick={() => handleSelectDate('2026-05-18')}
                   className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
                     selectedDate === '2026-05-18' ? 'bg-primary text-white' : 'text-text-muted hover:text-text-primary'
                   }`}
@@ -211,7 +265,7 @@ export default function ClinicalCalendarPage() {
                   Today (May 18)
                 </button>
                 <button 
-                  onClick={() => setSelectedDate('2026-05-19')}
+                  onClick={() => handleSelectDate('2026-05-19')}
                   className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
                     selectedDate === '2026-05-19' ? 'bg-primary text-white' : 'text-text-muted hover:text-text-primary'
                   }`}
@@ -267,7 +321,7 @@ export default function ClinicalCalendarPage() {
                           <div className="space-y-1">
                             <p className="text-xs font-black text-text-primary">{apt.patientName}</p>
                             <p className="text-[9px] text-text-muted font-mono font-bold uppercase">
-                              Procedure: {apt.type} · Doctor: {apt.providerName}
+                              Procedure: {getServiceLabel(apt.type, services)} · Doctor: {apt.providerName}
                             </p>
                           </div>
                         ) : (
@@ -352,7 +406,7 @@ export default function ClinicalCalendarPage() {
                   return (
                     <div 
                       key={idx}
-                      onClick={() => setSelectedDate(dateStr)}
+                      onClick={() => handleSelectDate(dateStr)}
                       className={`min-h-[100px] p-2 rounded-xl border flex flex-col justify-between transition-all cursor-pointer select-none ${
                         isSelected 
                           ? 'bg-primary/10 border-primary' 
@@ -529,7 +583,7 @@ export default function ClinicalCalendarPage() {
                         <div className="space-y-1">
                           <p className="text-xs font-black text-text-primary leading-none">{apt.patientName}</p>
                           <p className="text-[9px] text-text-muted font-mono font-bold uppercase">
-                            {apt.time} · {apt.type}
+                            {apt.time} · {getServiceLabel(apt.type, services)}
                           </p>
                         </div>
                         <Badge className={`text-[8px] font-black uppercase border-none px-2 py-0.5 ${
@@ -647,15 +701,25 @@ export default function ClinicalCalendarPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-text-muted uppercase tracking-widest">Procedure Type</label>
-                <Select value={aptType} onValueChange={setAptType as any}>
+                <Select value={aptType} onValueChange={handleAptTypeChange}>
                   <SelectTrigger className="bg-surface2 border-border h-10 text-xs font-bold text-text-primary">
-                    <SelectValue placeholder="Checkup" />
+                    <SelectValue placeholder="Select type..." />
                   </SelectTrigger>
                   <SelectContent className="bg-surface border border-border">
-                    <SelectItem value="CHECKUP" className="text-xs font-semibold text-text-primary">Checkup</SelectItem>
-                    <SelectItem value="CONSULTATION" className="text-xs font-semibold text-text-primary">Consultation</SelectItem>
-                    <SelectItem value="PROCEDURE" className="text-xs font-semibold text-text-primary">Procedure</SelectItem>
-                    <SelectItem value="EMERGENCY" className="text-xs font-semibold text-text-primary">Emergency</SelectItem>
+                    {services.length > 0 ? (
+                      services.filter(s => s.enabled !== false).map(s => (
+                        <SelectItem key={s.service_type} value={s.service_type} className="text-xs font-semibold text-text-primary">
+                          {s.service_label}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <>
+                        <SelectItem value="CHECKUP" className="text-xs font-semibold text-text-primary">Checkup</SelectItem>
+                        <SelectItem value="CONSULTATION" className="text-xs font-semibold text-text-primary">Consultation</SelectItem>
+                        <SelectItem value="PROCEDURE" className="text-xs font-semibold text-text-primary">Procedure</SelectItem>
+                        <SelectItem value="EMERGENCY" className="text-xs font-semibold text-text-primary">Emergency</SelectItem>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
               </div>

@@ -196,13 +196,13 @@ export default function PatientsCRMPage() {
     setImportFile(null)
   }
 
-  // Calculate dynamic stats (from all patients, not date-filtered)
-  const totalCount = patients.length
-  const activeCount = patients.filter(p => p.churnRisk === 'LOW').length
-  const atRiskCount = patients.filter(p => p.churnRisk === 'HIGH').length
-  const marketingCount = patients.filter(p => p.consents?.marketing).length
+  // Calculate dynamic stats (from date-filtered patients)
+  const totalCount = dateFilteredPatients.length
+  const activeCount = dateFilteredPatients.filter(p => p.churnRisk === 'LOW').length
+  const atRiskCount = dateFilteredPatients.filter(p => p.churnRisk === 'HIGH').length
+  const marketingCount = dateFilteredPatients.filter(p => p.consents?.marketing).length
 
-  // Filter patients dynamically (using date-filtered base)
+  // Filter patients dynamically (from date-filtered patients)
   const filteredPatients = dateFilteredPatients.filter(p => {
     const matchesSearch = 
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 

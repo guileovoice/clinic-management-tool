@@ -8,11 +8,7 @@ export type AppointmentStatus =
   | 'NO_SHOW' 
   | 'CANCELLED'
 
-export type AppointmentType = 
-  | 'CHECKUP' 
-  | 'CONSULTATION' 
-  | 'PROCEDURE' 
-  | 'EMERGENCY'
+export type AppointmentType = string
 
 export interface Consent {
   essential: boolean
@@ -105,3 +101,15 @@ export interface Campaign {
   sentAt?: string
   createdAt: string
 }
+
+export interface ClinicService {
+  service_type: string
+  service_label: string
+  category: string
+  duration_min: number
+  price_usd: number
+  price_note?: string
+  enabled: boolean
+  requires_consultation: boolean
+}
+

@@ -11,7 +11,8 @@ import {
   Target, 
   Settings, 
   LogOut,
-  ShieldAlert
+  ShieldAlert,
+  Sparkles
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useClinicStore } from '@/lib/stores/clinicStore'
@@ -20,11 +21,13 @@ const navItems = [
   { href: '/overview', label: 'Overview', icon: LayoutDashboard },
   { href: '/calendar', label: 'Booking Calendar', icon: Calendar },
   { href: '/patients', label: 'Patients CRM', icon: Users },
+  { href: '/services', label: 'Clinic Services', icon: Sparkles },
   { href: '/calls', label: 'Call Logs', icon: PhoneCall },
   { href: '/campaigns', label: 'Outreach Campaigns', icon: Send },
   { href: '/audiences', label: 'Ad Sync Audiences', icon: Target },
   { href: '/settings', label: 'System Settings', icon: Settings },
 ]
+
 
 export function Sidebar() {
   const pathname = usePathname()

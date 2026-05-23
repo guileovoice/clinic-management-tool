@@ -1,0 +1,24 @@
+service_type,service_label,category,duration_min,price_usd,price_note,enabled,requires_consultation
+CLEANING,Teeth Cleaning,Preventive,45,120,Per session,true,false
+CHECKUP,Dental Checkup / Exam,Preventive,30,80,Includes basic examination,true,false
+XRAY,Dental X-Ray,Preventive,20,60,Per set of X-rays,true,false
+FILLING,Tooth Filling,Restorative,60,150,Per tooth (composite resin),true,false
+CROWN,Dental Crown,Restorative,90,1200,Per crown (porcelain),true,true
+ROOT_CANAL,Root Canal Treatment,Restorative,90,900,Per tooth (excluding crown),true,true
+EXTRACTION,Tooth Extraction,Restorative,45,200,Simple extraction per tooth,true,false
+EXTRACTION_SURGICAL,Surgical Tooth Extraction,Restorative,75,350,Impacted or complex cases,true,true
+WHITENING,Teeth Whitening,Cosmetic,60,350,In-office whitening session,true,false
+VENEERS,Dental Veneers,Cosmetic,120,1000,Per veneer (porcelain),true,true
+CONSULTATION,New Patient Consultation,Consultation,30,50,Fee waived if treatment booked same day,true,false
+FOLLOWUP,Follow-Up Visit,Consultation,20,0,Free within 30 days of treatment,true,false
+ORTHODONTIC_CONSULT,Orthodontic Consultation,Orthodontics,45,0,Free initial consultation,true,false
+INVISALIGN,Invisalign Treatment,Orthodontics,30,4500,Full treatment (starting price),true,true
+BRACES,Traditional Braces,Orthodontics,60,3500,Full treatment (starting price),true,true
+IMPLANT_CONSULT,Dental Implant Consultation,Implants,45,0,Free initial consultation,true,false
+IMPLANT_PLACEMENT,Dental Implant Placement,Implants,120,2500,Per implant (excluding crown),true,true
+EMERGENCY,Emergency Dental Visit,Emergency,30,150,Assessment fee applies toward treatment,true,false
+PEDIATRIC,Pediatric Dental Visit,Pediatric,30,90,Ages 5–17,true,false
+DEEP_CLEANING,Deep Cleaning (Scaling & Root Planing),Preventive,90,300,Per quadrant,true,false
+NIGHT_GUARD,Night Guard / Mouth Guard,Restorative,30,400,Custom fitted,true,false
+BONDING,Dental Bonding,Cosmetic,60,300,Per tooth,true,false
+SEALANTS,Dental Sealants,Preventive,30,50,Per tooth,true,false

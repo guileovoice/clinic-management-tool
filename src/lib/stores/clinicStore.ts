@@ -40,6 +40,7 @@ interface ClinicState {
   appointments: Appointment[]
   campaigns: Campaign[]
   callLogs: CallLog[]
+  services: any[]
   isLoading: boolean
   dateRange: DateRange
 
@@ -50,6 +51,7 @@ interface ClinicState {
   fetchAppointments: () => Promise<void>
   fetchCampaigns: () => Promise<void>
   fetchCallLogs: () => Promise<void>
+  fetchServices: () => Promise<void>
   setDateRange: (range: DateRange) => void
 
   addPatient: (patient: Omit<Patient, 'id' | 'createdAt'> & { id?: string }) => Promise<string>
@@ -241,6 +243,7 @@ export const useClinicStore = create<ClinicState>((set, get) => ({
   appointments: [],
   campaigns: [],
   callLogs: [],
+  services: [],
   isLoading: false,
   dateRange: getDefaultDateRange(),
 
@@ -251,6 +254,7 @@ export const useClinicStore = create<ClinicState>((set, get) => ({
     try {
       await get().fetchClinicInfo()
       await get().fetchPatients()
+      await get().fetchServices() // Load services first so appointment types map properly
       await get().fetchAppointments()
       await get().fetchCampaigns()
       await get().fetchCallLogs()
@@ -352,6 +356,19 @@ export const useClinicStore = create<ClinicState>((set, get) => ({
     } catch (err) {
       console.warn('Supabase fetchCallLogs error:', err)
       set({ callLogs: [] })
+    }
+  },
+
+  fetchServices: async () => {
+    try {
+      const res = await fetch('/api/services')
+      if (res.ok) {
+        const data = await res.json()
+        set({ services: data })
+      }
+    } catch (err) {
+      console.warn('Supabase fetchServices error:', err)
+      set({ services: [] })
     }
   },
 
@@ -742,4 +759,19 @@ export function useFilteredPatients() {
   const { patients, dateRange } = useClinicStore()
   // Patients filter uses `createdAt` 
   return filterByDateRange(patients, dateRange.start, dateRange.end, 'createdAt')
+}
+
+export function getServiceLabel(type: string, services: any[] = []): string {
+  if (!type) return 'Unknown Procedure'
+  const srv = services.find(s => s.service_type === type || s.service_type === type.toUpperCase())
+  if (srv) return srv.service_label
+  
+  // Fallbacks for default hardcoded types
+  const upper = type.toUpperCase()
+  if (upper === 'CHECKUP') return 'Routine Checkup & Cleaning'
+  if (upper === 'CONSULTATION') return 'Crown & Aesthetic Consultation'
+  if (upper === 'PROCEDURE') return 'Teeth Whitening Touch-up'
+  if (upper === 'EMERGENCY') return 'Emergency Toothache Relief'
+  
+  return type
 }
