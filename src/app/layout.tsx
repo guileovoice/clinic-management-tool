@@ -14,8 +14,11 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Guileo Clinics - Voice-First Customer Intelligence Platform',
+  title: 'Guileo Clinic — Staff Portal',
   description: 'HIPAA-compliant, automated patient scheduling, intelligence CRM, and no-show prevention.',
+  icons: {
+    icon: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({

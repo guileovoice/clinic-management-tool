@@ -28,8 +28,8 @@ export function Topbar() {
   const [notificationCount, setNotificationCount] = useState(3)
   const { info } = useClinicStore()
 
-  const handleSignOut = () => {
-    document.cookie = "user_session=; path=/; max-age=0; samesite=lax;"
+  const handleSignOut = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
     window.location.href = '/login'
   }
 

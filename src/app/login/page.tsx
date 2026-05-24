@@ -18,47 +18,24 @@ export default function LoginPage() {
     e.preventDefault()
     setIsLoading(true)
 
-    // Simulate small latency for premium feels
-    await new Promise((resolve) => setTimeout(resolve, 800))
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+      })
 
-    const cleanEmail = email.trim().toLowerCase()
+      const data = await res.json()
 
-    const users = [
-      {
-        email: 'info@scalepods.co',
-        password: 'ScalePods@123',
-        name: 'ScalePods Admin',
-        role: 'SUPERADMIN'
-      },
-      {
-        email: 'admguileo@gmail.com',
-        password: 'Guileo@123',
-        name: 'Guileo Administrator',
-        role: 'ADMIN'
+      if (res.ok) {
+        toast.success(`Welcome back, ${data.name}!`)
+        window.location.href = '/overview'
+      } else {
+        toast.error(data.error || 'Invalid clinical credentials.')
+        setIsLoading(false)
       }
-    ]
-
-    const matchedUser = users.find(
-      (u) => u.email === cleanEmail && u.password === password
-    )
-
-    if (matchedUser) {
-      // Set the session cookie (expires in 7 days)
-      const sessionData = {
-        email: matchedUser.email,
-        name: matchedUser.name,
-        role: matchedUser.role
-      }
-      document.cookie = `user_session=${encodeURIComponent(
-        JSON.stringify(sessionData)
-      )}; path=/; max-age=3600; samesite=lax;`
-
-      toast.success(`Welcome back, ${matchedUser.name}!`)
-      
-      // Redirect to overview dashboard
-      window.location.href = '/overview'
-    } else {
-      toast.error('Invalid clinical credentials. Please check your email and password.')
+    } catch {
+      toast.error('Connection error. Please try again.')
       setIsLoading(false)
     }
   }
@@ -146,18 +123,7 @@ export default function LoginPage() {
           </form>
         </Card>
 
-        {/* Quick Helper Links for Testing (premium touches) */}
-        <div className="p-4 bg-surface/50 border border-border/60 rounded-2xl flex flex-col items-center justify-center text-center space-y-1.5 backdrop-blur-sm">
-          <span className="text-[9px] font-bold text-text-muted uppercase tracking-wider">Developer Quick-Login Accounts</span>
-          <div className="flex flex-col gap-1 text-[9px] text-text-muted font-mono">
-            <div>
-              <span className="text-primary font-bold">ScalePods:</span> info@scalepods.co · ScalePods@123
-            </div>
-            <div>
-              <span className="text-emerald-500 font-bold">Guileo:</span> admguileo@gmail.com · Guileo@123
-            </div>
-          </div>
-        </div>
+        
       </div>
     </div>
   )

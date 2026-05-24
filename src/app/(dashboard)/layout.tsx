@@ -13,33 +13,29 @@ export default function DashboardLayout({
   const { bootstrapData } = useClinicStore()
 
   useEffect(() => {
-    // Bootstrap all clinical data sequentially
     bootstrapData()
 
-    // Session validation checker
-    const checkSession = () => {
-      const hasSession = document.cookie
-        .split('; ')
-        .some(row => row.trim().startsWith('user_session='))
-      if (!hasSession) {
+    const checkSession = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (!res.ok) {
+          window.location.href = '/login'
+        }
+      } catch {
         window.location.href = '/login'
       }
     }
 
-    // Run check immediately on mount
     checkSession()
 
-    // Periodically inspect session cookie status (every 5 seconds)
-    const interval = setInterval(checkSession, 5000)
+    const interval = setInterval(checkSession, 30000)
     return () => clearInterval(interval)
   }, [])
 
   return (
     <div className="flex w-full">
-      {/* Sidebar */}
       <Sidebar />
 
-      {/* Main Workspace Area */}
       <div className="flex-1 pl-64 h-screen flex flex-col overflow-hidden">
         <Topbar />
         <main className="flex-1 p-8 overflow-y-auto">
