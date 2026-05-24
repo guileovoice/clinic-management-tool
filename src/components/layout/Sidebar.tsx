@@ -12,7 +12,8 @@ import {
   Settings, 
   LogOut,
   ShieldAlert,
-  Sparkles
+  Sparkles,
+  MessageSquare
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useClinicStore } from '@/lib/stores/clinicStore'
@@ -24,6 +25,7 @@ const navItems = [
   { href: '/services', label: 'Clinic Services', icon: Sparkles },
   { href: '/calls', label: 'Call Logs', icon: PhoneCall },
   { href: '/campaigns', label: 'Outreach Campaigns', icon: Send },
+  { href: '/whatsapp', label: 'WhatsApp', icon: MessageSquare },
   { href: '/audiences', label: 'Ad Sync Audiences', icon: Target },
   { href: '/settings', label: 'System Settings', icon: Settings },
 ]

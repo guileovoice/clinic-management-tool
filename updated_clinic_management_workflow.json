@@ -1,0 +1,324 @@
+{
+  "name": "clinic management tool",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "clinic-management-tool",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "c93741ee-9a5c-4f77-978e-bfd5de0bfbe6",
+      "name": "Webhook — Vapi POST",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [304, -640],
+      "webhookId": "clinic-appointment-webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": { "responseCode": 200 }
+      },
+      "id": "f35a9c36-e9a9-40f0-9a50-02434c147f2c",
+      "name": "Respond 200 to Vapi",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [496, -784]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
+          "conditions": [
+            {
+              "id": "c23b776f-693d-40c9-af39-b0c7e2555b7b",
+              "leftValue": "={{$json.body.message.type}}",
+              "rightValue": "end-of-call-report",
+              "operator": { "type": "string", "operation": "equals", "name": "filter.operator.equals" }
+            },
+            {
+              "id": "ae7933de-b6b0-47e7-ac0d-c94252a9b322",
+              "leftValue": "={{$json.body.message.type}}",
+              "rightValue": "hang",
+              "operator": { "type": "string", "operation": "equals", "name": "filter.operator.equals" }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "2ad76e62-c3d7-4be1-9b4b-9465fa927728",
+      "name": "If End of Call",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [496, -640]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\nconst msg  = body.message || {};\n\nif (msg.type !== 'end-of-call-report') return [];\n\nconst call = msg.call || {};\n\nconst soKeys = Object.keys(msg.artifact?.structuredOutputs || {});\nlet sd = {};\nif (soKeys.length > 0) {\n  sd = msg.artifact.structuredOutputs[soKeys[0]]?.result || {};\n  if (sd.result) sd = sd.result;\n}\n\nconst callerPhone = call.customer?.number || '';\nconst whatsappRaw = sd.patientPhone || callerPhone || '';\n\nconst toE164 = (raw) => {\n  if (!raw) return '';\n  const d = String(raw).replace(/\\D/g, '');\n  if (d.length === 10) return '+1' + d;\n  if (d.length === 11 && d.startsWith('1')) return '+' + d;\n  return d ? ('+' + d) : '';\n};\n\nconst callerE164   = toE164(callerPhone);\n\nconst patientName = sd.patientName || 'Guest';\nconst appointmentDate = sd.appointmentDate || new Date().toISOString().slice(0, 10);\nconst appointmentTime = sd.appointmentTime || '09:00';\nconst appointmentType = (sd.appointmentType || 'CHECKUP').toUpperCase();\nconst notes = sd.notes || '';\n\nreturn [{\n  json: {\n    tenant_id:\n  body.tenant_id ||\n  \"395b50b9-9504-4bda-bd38-7ce5b53e7aa0\",\n    patientName,\n    patientPhone: callerE164,\n    appointmentDate,\n    appointmentTime,\n    appointmentType,\n    notes,\n    channel: 'VOICE',\n    status: 'PENDING'\n  }\n}];"
+      },
+      "id": "0a68b817-63fd-43f8-9c37-981bad35e3a3",
+      "name": "Parse Vapi Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [704, -640]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "patients",
+        "filters": {
+          "conditions": [
+            { "keyName": "phone", "condition": "eq", "keyValue": "={{ $json.patientPhone }}" }
+          ]
+        }
+      },
+      "id": "8f8df9bd-4947-452f-b102-29dc277aea9c",
+      "name": "Find Patient",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [896, -640],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 3 },
+          "conditions": [
+            {
+              "id": "c23b776f-693d-40c9-af39-b0c7e2555b7b",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "true",
+              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "0ddf3595-e551-444b-a686-07c2ac9791b8",
+      "name": "If Patient Exists",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1104, -640]
+    },
+    {
+      "parameters": {
+        "tableId": "patients",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "tenant_id", "fieldValue": "={{$('Parse Vapi Payload').item.json.tenant_id}}" },
+            { "fieldId": "name", "fieldValue": "={{ $('Parse Vapi Payload').item.json.patientName }}" },
+            { "fieldId": "phone", "fieldValue": "={{ $('Parse Vapi Payload').item.json.patientPhone }}" },
+            { "fieldId": "preferred_channel", "fieldValue": "={{ $('Parse Vapi Payload').item.json.channel }}" }
+          ]
+        }
+      },
+      "id": "2d0c5bb3-fd00-4935-a094-cae6c1f6d36a",
+      "name": "Create Patient",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1296, -480]
+    },
+    {
+      "parameters": {
+        "jsCode": "let patientId;\n\ntry {\n  patientId = $('Create Patient').first().json.id;\n} catch (error) {\n  patientId = $('Find Patient').first().json.id;\n}\n\nconst vapiData = $('Parse Vapi Payload').first().json;\n\nreturn [{\n  json: {\n    patient_id: patientId,\n    tenant_id: vapiData.tenant_id,\n    date: vapiData.appointmentDate,\n    time: vapiData.appointmentTime,\n    status: vapiData.status,\n    type: vapiData.appointmentType,\n    notes: vapiData.notes\n  }\n}];"
+      },
+      "id": "b65c8c51-56c0-4ab2-9741-63ee4a839694",
+      "name": "Get Patient ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1504, -640]
+    },
+    {
+      "parameters": {
+        "tableId": "appointments",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "tenant_id", "fieldValue": "={{ $json.tenant_id }}" },
+            { "fieldId": "patient_id", "fieldValue": "={{ $json.patient_id }}" },
+            { "fieldId": "date", "fieldValue": "={{ $json.date }}" },
+            { "fieldId": "time", "fieldValue": "={{ $json.time }}" },
+            { "fieldId": "status", "fieldValue": "={{ $json.status }}" },
+            { "fieldId": "type", "fieldValue": "={{ $json.type }}" },
+            { "fieldId": "notes", "fieldValue": "={{ $json.notes }}" }
+          ]
+        }
+      },
+      "id": "980400a4-0c83-44ef-bc59-55a35a36dec2",
+      "name": "Create Appointment",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1696, -640]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.srv1010832.hstgr.cloud/webhook/whatsapp-trigger",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "tenant_id", "value": "={{ $json.tenant_id }}" },
+            { "name": "patientName", "value": "={{ $('Parse Vapi Payload').item.json.patientName }}" },
+            { "name": "patientPhone", "value": "={{ $('Parse Vapi Payload').item.json.patientPhone }}" },
+            { "name": "appointmentDate", "value": "={{ $json.date }}" },
+            { "name": "appointmentTime", "value": "={{ $json.time }}" },
+            { "name": "status", "value": "={{ $json.status }}" }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [2080, -640],
+      "id": "52e78cb9-64ca-4348-8fbf-435efbec8ea9",
+      "name": "HTTP Request",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first()?.json || {};\nlet incoming = raw;\nif (raw.body && typeof raw.body === 'object') {\n  incoming = raw.body;\n}\nconst toolCalls = incoming.message?.toolCalls || incoming.message?.toolCallList || incoming.toolCalls || incoming.toolCallList || null;\nconst singleCall = (Array.isArray(toolCalls) && toolCalls[0]) || toolCalls || null;\nlet args = singleCall?.function?.arguments ?? singleCall?.arguments ?? incoming ?? {};\nif (typeof args === \"string\") {\n  try { args = JSON.parse(args); } catch (e) { args = {}; }\n}\nconst date = args.date || incoming.date || null;\nlet time = args.time || incoming.time || null;\nconst tenantId = args.tenant_id || args.tenantId || incoming.tenant_id || \"395b50b9-9504-4bda-bd38-7ce5b53e7aa0\";\nif (time && /^\\d{2}:\\d{2}$/.test(time)) {\n  time = `${time}:00`;\n}\nconst toolCallId = singleCall?.id || singleCall?.toolCallId || incoming.toolCallId || \"test_run_id\";\nconst supabaseUrl = \"https://iifkgbblhyyomyizclam.supabase.co/rest/v1/appointments?select=id&limit=1&tenant_id=eq.\" + encodeURIComponent(tenantId) + \"&date=eq.\" + encodeURIComponent(date) + \"&time=eq.\" + encodeURIComponent(time);\nreturn [{\n  json: {\n    toolCallId,\n    date,\n    time,\n    tenant_id: tenantId,\n    supabaseUrl\n  }\n}];"
+      },
+      "id": "635fbddb-4f73-4ef1-991a-d68f3a04172b",
+      "name": "Extract Request Params1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, -240]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.supabaseUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlpZmtnYmJsaHl5b215aXpjbGFtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTE3NzUwNSwiZXhwIjoyMDk0NzUzNTA1fQ.DZDY1iZQ0pVImUxVJeGw5u-S5nakhSnjLzT3pFwpvKU" },
+            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlpZmtnYmJsaHl5b215aXpjbGFtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTE3NzUwNSwiZXhwIjoyMDk0NzUzNTA1fQ.DZDY1iZQ0pVImUxVJeGw5u-S5nakhSnjLzT3pFwpvKU" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Accept", "value": "application/json" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "bd203373-098a-4886-af96-2f8855f758bf",
+      "name": "Query Appointments1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [688, -240],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const toolCallId = $('Extract Request Params1').item.json.toolCallId || \"test_run_id\";\nlet rows = [];\nconst currentItem = $json;\nif (Array.isArray(currentItem)) {\n  rows = currentItem;\n} else if (currentItem && typeof currentItem === 'object' && Object.keys(currentItem).length > 0) {\n  rows = [currentItem];\n}\nconst isBooked = rows.some(r => r && r.id !== undefined && r.id !== null && r.id !== '');\nreturn [{\n  json: {\n    results: [{\n      toolCallId,\n      result: isBooked ? \"Slot is already booked.\" : \"Slot is available.\"\n    }]\n  }\n}];"
+      },
+      "id": "039aa340-d7cd-45e6-827d-4495d8c39686",
+      "name": "Determine Availability1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [896, -240]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "check-availability",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "04eef76e-8e58-48c1-81b7-ecbe304fc9b4",
+      "name": "Webhook — Vapi Check Availability2",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [288, -240],
+      "webhookId": "check-availability-webhook"
+    }
+  ],
+  "connections": {
+    "Webhook — Vapi POST": {
+      "main": [
+        [
+          { "node": "Respond 200 to Vapi", "type": "main", "index": 0 },
+          { "node": "If End of Call", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "If End of Call": {
+      "main": [
+        [
+          { "node": "Parse Vapi Payload", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Parse Vapi Payload": {
+      "main": [
+        [
+          { "node": "Find Patient", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Find Patient": {
+      "main": [
+        [
+          { "node": "If Patient Exists", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "If Patient Exists": {
+      "main": [
+        [
+          { "node": "Get Patient ID", "type": "main", "index": 0 },
+          { "node": "Create Patient", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Create Patient": {
+      "main": [
+        [
+          { "node": "Get Patient ID", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Get Patient ID": {
+      "main": [
+        [
+          { "node": "Create Appointment", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Create Appointment": {
+      "main": [
+        [
+          { "node": "HTTP Request", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Extract Request Params1": {
+      "main": [
+        [
+          { "node": "Query Appointments1", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Query Appointments1": {
+      "main": [
+        [
+          { "node": "Determine Availability1", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Webhook — Vapi Check Availability2": {
+      "main": [
+        [
+          { "node": "Extract Request Params1", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  }
+}

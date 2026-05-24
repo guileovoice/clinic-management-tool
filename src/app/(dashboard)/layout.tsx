@@ -15,6 +15,23 @@ export default function DashboardLayout({
   useEffect(() => {
     // Bootstrap all clinical data sequentially
     bootstrapData()
+
+    // Session validation checker
+    const checkSession = () => {
+      const hasSession = document.cookie
+        .split('; ')
+        .some(row => row.trim().startsWith('user_session='))
+      if (!hasSession) {
+        window.location.href = '/login'
+      }
+    }
+
+    // Run check immediately on mount
+    checkSession()
+
+    // Periodically inspect session cookie status (every 5 seconds)
+    const interval = setInterval(checkSession, 5000)
+    return () => clearInterval(interval)
   }, [])
 
   return (

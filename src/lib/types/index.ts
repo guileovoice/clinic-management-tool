@@ -113,3 +113,35 @@ export interface ClinicService {
   requires_consultation: boolean
 }
 
+export interface WhatsAppMessage {
+  id: string
+  tenant_id: string
+  contact_name: string
+  phone_number: string
+  direction: 'outbound' | 'inbound'
+  message_body: string
+  status: 'sent' | 'delivered' | 'read'
+  appointment_status: string
+  timestamp: string
+}
+
+export interface WhatsAppInbound {
+  id: string
+  tenant_id: string
+  phone_number: string
+  message_body: string
+  is_read: boolean
+  timestamp: string
+}
+
+export interface WhatsAppConfig {
+  id: string
+  tenant_id: string
+  api_url: string
+  auth_token: string
+  phone_number_id: string
+  webhook_verify_token: string
+  status: 'CONNECTED' | 'NOT_CONNECTED'
+  created_at: string
+  updated_at: string
+}
