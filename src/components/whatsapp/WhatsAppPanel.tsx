@@ -296,24 +296,6 @@ export function WhatsAppPanel() {
               </div>
             ))}
           </div>
-
-          {/* Compose Area */}
-          <form onSubmit={handleSendMessage} className="min-h-[62px] px-4 py-3 bg-[#202C33] flex items-center gap-4 z-10">
-            <input 
-              type="text"
-              placeholder="Type a message (Dummy Mode Active)..."
-              value={draftMessage}
-              onChange={(e) => setDraftMessage(e.target.value)}
-              className="flex-1 bg-[#2A3942] rounded-lg px-4 py-2 text-[#E9EDEF] outline-none focus:ring-1 focus:ring-emerald-500/50"
-            />
-            <button 
-              type="submit" 
-              disabled={!draftMessage.trim() || isSending} 
-              className="p-2 text-[#8696A0] hover:text-[#E9EDEF] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <Send className="w-6 h-6" />
-            </button>
-          </form>
         </div>
       ) : (
         <div className="flex-1 flex flex-col bg-[#222E35] items-center justify-center border-l border-[#222E35]">
