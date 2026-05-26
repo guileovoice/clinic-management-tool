@@ -13,6 +13,7 @@ import {
   Activity, 
   AlertTriangle, 
   Plus, 
+  X,
   Heart,
   BadgeAlert,
   Send,
@@ -33,6 +34,11 @@ export default function PatientDetailPage() {
   const { patients, appointments, callLogs, services } = useClinicStore()
   const [mounted, setMounted] = useState(false)
 
+  const [newProcedure, setNewProcedure] = useState('')
+  const [newAllergen, setNewAllergen] = useState('')
+  const [newMedication, setNewMedication] = useState('')
+  const { updatePatient } = useClinicStore()
+
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -40,6 +46,23 @@ export default function PatientDetailPage() {
   const patient = patients.find(p => p.id === id)
   const patientApts = appointments.filter(apt => apt.patientId === id)
   const patientCalls = callLogs.filter(call => call.phone === patient?.phone)
+
+  const handleAddItem = async (field: 'treatmentHistory' | 'allergens' | 'medications', value: string) => {
+    if (!value.trim() || !patient) return
+    const updated = [...patient[field], value.trim()]
+    await updatePatient(patient.id, { [field]: updated })
+    if (field === 'treatmentHistory') setNewProcedure('')
+    else if (field === 'allergens') setNewAllergen('')
+    else setNewMedication('')
+    toast.success(`${field === 'treatmentHistory' ? 'Procedure' : field === 'allergens' ? 'Allergen' : 'Medication'} added`)
+  }
+
+  const handleRemoveItem = async (field: 'treatmentHistory' | 'allergens' | 'medications', index: number) => {
+    if (!patient) return
+    const updated = patient[field].filter((_, i) => i !== index)
+    await updatePatient(patient.id, { [field]: updated })
+    toast.success('Item removed')
+  }
 
   if (!patient) {
     return (
@@ -159,10 +182,29 @@ export default function PatientDetailPage() {
                 <h4 className="text-[10px] font-black uppercase text-text-muted tracking-widest">Procedures Done</h4>
                 <div className="space-y-1">
                   {patient.treatmentHistory.map((item, idx) => (
-                    <div key={idx} className="text-xs font-bold text-text-primary p-2 bg-surface2 rounded-lg border border-border">
-                      {item}
+                    <div key={idx} className="flex items-center justify-between gap-2 text-xs font-bold text-text-primary p-2 bg-surface2 rounded-lg border border-border">
+                      <span>{item}</span>
+                      <button onClick={() => handleRemoveItem('treatmentHistory', idx)} className="text-danger hover:text-danger/80 shrink-0 cursor-pointer">
+                        <X className="w-3 h-3" />
+                      </button>
                     </div>
                   ))}
+                </div>
+                <div className="flex gap-1">
+                  <input
+                    type="text"
+                    value={newProcedure}
+                    onChange={e => setNewProcedure(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddItem('treatmentHistory', newProcedure)}
+                    placeholder="Add procedure..."
+                    className="flex-1 text-xs bg-surface2 border border-border rounded-lg px-2 py-1.5 text-text-primary placeholder:text-text-muted/50 outline-none focus:border-primary/40"
+                  />
+                  <button
+                    onClick={() => handleAddItem('treatmentHistory', newProcedure)}
+                    className="p-1.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
 
@@ -174,13 +216,32 @@ export default function PatientDetailPage() {
                 <div className="space-y-1">
                   {patient.allergens.length > 0 ? (
                     patient.allergens.map((item, idx) => (
-                      <div key={idx} className="text-xs font-bold text-danger p-2 bg-danger/5 border border-danger/20 rounded-lg">
-                        {item}
+                      <div key={idx} className="flex items-center justify-between gap-2 text-xs font-bold text-danger p-2 bg-danger/5 border border-danger/20 rounded-lg">
+                        <span>{item}</span>
+                        <button onClick={() => handleRemoveItem('allergens', idx)} className="text-danger hover:text-danger/80 shrink-0 cursor-pointer">
+                          <X className="w-3 h-3" />
+                        </button>
                       </div>
                     ))
                   ) : (
                     <p className="text-xs text-text-muted italic">No allergies recorded</p>
                   )}
+                </div>
+                <div className="flex gap-1">
+                  <input
+                    type="text"
+                    value={newAllergen}
+                    onChange={e => setNewAllergen(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddItem('allergens', newAllergen)}
+                    placeholder="Add allergen..."
+                    className="flex-1 text-xs bg-surface2 border border-border rounded-lg px-2 py-1.5 text-text-primary placeholder:text-text-muted/50 outline-none focus:border-danger/40"
+                  />
+                  <button
+                    onClick={() => handleAddItem('allergens', newAllergen)}
+                    className="p-1.5 bg-danger/10 text-danger rounded-lg hover:bg-danger/20 transition-colors cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
 
@@ -190,13 +251,32 @@ export default function PatientDetailPage() {
                 <div className="space-y-1">
                   {patient.medications.length > 0 ? (
                     patient.medications.map((item, idx) => (
-                      <div key={idx} className="text-xs font-bold text-amber-500 p-2 bg-amber-500/5 border border-amber-500/20 rounded-lg">
-                        {item}
+                      <div key={idx} className="flex items-center justify-between gap-2 text-xs font-bold text-amber-500 p-2 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                        <span>{item}</span>
+                        <button onClick={() => handleRemoveItem('medications', idx)} className="text-amber-500 hover:text-amber-500/80 shrink-0 cursor-pointer">
+                          <X className="w-3 h-3" />
+                        </button>
                       </div>
                     ))
                   ) : (
                     <p className="text-xs text-text-muted italic">No active prescriptions</p>
                   )}
+                </div>
+                <div className="flex gap-1">
+                  <input
+                    type="text"
+                    value={newMedication}
+                    onChange={e => setNewMedication(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddItem('medications', newMedication)}
+                    placeholder="Add medication..."
+                    className="flex-1 text-xs bg-surface2 border border-border rounded-lg px-2 py-1.5 text-text-primary placeholder:text-text-muted/50 outline-none focus:border-amber-500/40"
+                  />
+                  <button
+                    onClick={() => handleAddItem('medications', newMedication)}
+                    className="p-1.5 bg-amber-500/10 text-amber-500 rounded-lg hover:bg-amber-500/20 transition-colors cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
 

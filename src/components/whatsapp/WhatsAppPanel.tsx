@@ -15,43 +15,6 @@ export function WhatsAppPanel() {
   const [draftMessage, setDraftMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
 
-  // Dummy data fallback
-  const dummyMessages: WhatsAppMessage[] = [
-    {
-      id: '1',
-      tenant_id: 'dummy',
-      contact_name: 'John Doe',
-      phone_number: '+15551234567',
-      direction: 'outbound',
-      message_body: 'Hi John, your appointment for tomorrow is confirmed!',
-      status: 'read',
-      appointment_status: 'Confirmed',
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
-    },
-    {
-      id: '2',
-      tenant_id: 'dummy',
-      contact_name: 'Jane Smith',
-      phone_number: '+15559876543',
-      direction: 'outbound',
-      message_body: 'Hello Jane, please remember to bring your forms.',
-      status: 'delivered',
-      appointment_status: 'Confirmed',
-      timestamp: new Date(Date.now() - 1800000).toISOString(),
-    },
-    {
-      id: '3',
-      tenant_id: 'dummy',
-      contact_name: 'Alice Johnson',
-      phone_number: '+15554567890',
-      direction: 'outbound',
-      message_body: 'Hi Alice, your appointment has been cancelled as requested.',
-      status: 'sent',
-      appointment_status: 'Cancelled',
-      timestamp: new Date(Date.now() - 300000).toISOString(),
-    }
-  ]
-
   useEffect(() => {
     if (!info?.id) return
 
@@ -62,12 +25,11 @@ export function WhatsAppPanel() {
         .eq('tenant_id', info.id)
         .order('timestamp', { ascending: false })
       
-      if (!outErr && outMsgs && outMsgs.length > 0) {
+      if (!outErr && outMsgs) {
         setMessages(outMsgs as WhatsAppMessage[])
-        setSelectedContact(outMsgs[0].phone_number)
-      } else {
-        setMessages(dummyMessages)
-        setSelectedContact(dummyMessages[0].phone_number)
+        if (outMsgs.length > 0) {
+          setSelectedContact(outMsgs[0].phone_number)
+        }
       }
 
       const { count, error: inErr } = await supabase
@@ -177,8 +139,6 @@ export function WhatsAppPanel() {
 
   const selectedContactInfo = contacts.find(c => c.phone_number === selectedContact)
 
-  const isDemo = messages === dummyMessages
-
   return (
     <div className="flex h-[calc(100vh-140px)] w-full bg-[#111B21] rounded-2xl overflow-hidden shadow-2xl border border-[#222E35]">
       {/* Left Panel */}
@@ -188,7 +148,7 @@ export function WhatsAppPanel() {
             <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white">
               WA
             </div>
-            <span className="text-[#E9EDEF] font-semibold">Chats {isDemo && <span className="text-xs bg-emerald-600/20 text-emerald-500 px-2 py-0.5 rounded-full ml-2">Demo</span>}</span>
+            <span className="text-[#E9EDEF] font-semibold">Chats</span>
           </div>
           <div className="flex items-center gap-4 text-[#AEBAC1]">
             <div className="relative">
@@ -216,7 +176,7 @@ export function WhatsAppPanel() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {contacts.map((contact) => (
+          {contacts.length > 0 ? contacts.map((contact) => (
             <div 
               key={contact.phone_number} 
               onClick={() => setSelectedContact(contact.phone_number)}
@@ -240,7 +200,11 @@ export function WhatsAppPanel() {
                 </div>
               </div>
             </div>
-          ))}
+          )) : (
+            <div className="flex items-center justify-center h-full text-[#8696A0] text-sm p-6 text-center">
+              No WhatsApp messages yet. When you book appointments or send messages, they will appear here.
+            </div>
+          )}
         </div>
       </div>
 

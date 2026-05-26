@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { Patient, Appointment, Campaign, CallLog, AppointmentStatus, AppointmentType } from '../types'
 import { supabase } from '../supabaseClient'
-import { startOfDay, endOfDay, isWithinInterval } from 'date-fns'
+import { startOfDay, endOfDay, isWithinInterval, subDays } from 'date-fns'
 
 interface ClinicInfo {
   id: string
@@ -30,8 +30,9 @@ export interface DateRange {
 
 function getDefaultDateRange(): DateRange {
   const today = new Date()
-  const str = today.toISOString().split('T')[0]
-  return { start: str, end: str }
+  const start = subDays(today, 6).toISOString().split('T')[0]
+  const end = today.toISOString().split('T')[0]
+  return { start, end }
 }
 
 interface ClinicState {
@@ -55,6 +56,7 @@ interface ClinicState {
   setDateRange: (range: DateRange) => void
 
   addPatient: (patient: Omit<Patient, 'id' | 'createdAt'> & { id?: string }) => Promise<string>
+  updatePatient: (id: string, updates: Partial<Pick<Patient, 'treatmentHistory' | 'allergens' | 'medications'>>) => Promise<void>
   addAppointment: (appointment: Omit<Appointment, 'id' | 'createdAt'> & { id?: string }) => Promise<string>
   updateAppointmentStatus: (id: string, status: Appointment['status']) => Promise<void>
   deleteAppointment: (id: string) => Promise<void>
@@ -62,7 +64,7 @@ interface ClinicState {
 
   updateClinicInfo: (info: Partial<ClinicInfo>) => Promise<void>
   updateCallLogAction: (id: string, actionRequired: boolean) => Promise<void>
-  addCallLog: (callLog: Omit<CallLog, 'id' | 'timestamp'> & { id?: string }) => Promise<string>
+  addCallLog: (callLog: Omit<CallLog, 'id' | 'createdAt'> & { id?: string }) => Promise<string>
   addCampaign: (campaign: Omit<Campaign, 'id' | 'createdAt'> & { id?: string }) => Promise<string>
   sendCampaign: (id: string) => Promise<void>
 }
@@ -153,7 +155,7 @@ function mapAppointmentFromDb(row: any, patientName: string = '', patientPhone: 
     patientName: row.patient_name || patientName || 'Unknown Patient',
     patientPhone: row.patient_phone || patientPhone || '',
     date: row.date,
-    time: row.time ? row.time.substring(0, 5) : '',
+    time: (row.time || '').substring(0, 5),
     duration: row.duration,
     status: uiStatus,
     type: row.type as AppointmentType,
@@ -206,8 +208,7 @@ function mapCallLogFromDb(row: any): CallLog {
     tenantId: row.tenant_id || DEFAULT_TENANT_ID,
     patientName: row.customer_name || 'Unknown Caller',
     phone: row.customer_phone || '',
-    // Use created_at for date filtering as per requirements
-    timestamp: row.created_at || row.started_at || '',
+    createdAt: row.created_at || row.started_at || '',
     startedAt: row.started_at || row.created_at || '',
     durationSeconds: durSec,
     duration: durDisplay,
@@ -435,6 +436,30 @@ export const useClinicStore = create<ClinicState>((set, get) => ({
     return tempId
   },
 
+  updatePatient: async (id, updates) => {
+    set(state => ({
+      patients: state.patients.map(p =>
+        p.id === id ? { ...p, ...updates } : p
+      )
+    }))
+
+    try {
+      const dbFields: Record<string, any> = {}
+      if (updates.treatmentHistory !== undefined) dbFields.treatment_history = updates.treatmentHistory
+      if (updates.allergens !== undefined) dbFields.allergens = updates.allergens
+      if (updates.medications !== undefined) dbFields.medications = updates.medications
+
+      const { error } = await supabase
+        .from('patients')
+        .update(dbFields)
+        .eq('id', id)
+
+      if (error) throw error
+    } catch (err) {
+      console.warn('Supabase updatePatient error:', err)
+    }
+  },
+
   addAppointment: async (appointment) => {
     const tempId = appointment.id || generateUUID()
     const newApt: Appointment = {
@@ -582,7 +607,7 @@ export const useClinicStore = create<ClinicState>((set, get) => ({
     const newLog: CallLog = {
       ...callLog,
       id: tempId,
-      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
       startedAt: new Date().toISOString()
     }
     set(state => ({ callLogs: [newLog, ...state.callLogs] }))
@@ -716,7 +741,7 @@ function parseDateSafe(dateStr: string | undefined | null) {
 /**
  * Generic date filter.
  * dateField: which property to use for filtering.
- * Appointments use 'date', patients use 'createdAt', call logs use 'timestamp' (mapped from created_at)
+ * Appointments use 'date', patients use 'createdAt', call logs use 'createdAt'
  */
 export function filterByDateRange<T extends Record<string, any>>(
   items: T[],
@@ -751,8 +776,7 @@ export function useFilteredAppointments() {
 
 export function useFilteredCallLogs() {
   const { callLogs, dateRange } = useClinicStore()
-  // Call logs filter uses `timestamp` which is mapped from `created_at`
-  return filterByDateRange(callLogs, dateRange.start, dateRange.end, 'timestamp')
+  return filterByDateRange(callLogs, dateRange.start, dateRange.end, 'createdAt')
 }
 
 export function useFilteredPatients() {

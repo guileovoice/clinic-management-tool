@@ -352,7 +352,7 @@ export default function ClinicOverviewPage() {
                     )}
                   </div>
                   <div className="text-[10px] text-text-muted font-mono shrink-0">
-                    {format(new Date(log.timestamp), 'MMM d, hh:mm a')}
+                    {log.createdAt ? format(new Date(log.createdAt), 'MMM d, hh:mm a') : '—'}
                   </div>
                 </div>
               ))}

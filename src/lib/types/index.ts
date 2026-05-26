@@ -69,7 +69,7 @@ export interface CallLog {
   tenantId: string
   patientName: string
   phone: string
-  timestamp: string
+  createdAt: string
   startedAt: string
   durationSeconds: number
   duration: string // computed display e.g. "1m 45s"

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import fs from 'fs'
 import path from 'path'
-import { supabase } from '@/lib/supabaseClient'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 const servicesJsonPath = path.join(process.cwd(), 'src/app/services.json')
 const defaultCsvPath = path.join(process.cwd(), 'src/app/clinic_services.csv')
@@ -70,7 +70,7 @@ function parseCSV(text: string) {
 export async function GET() {
   try {
     // Try to get from Supabase services table first
-    const { data: dbData, error: dbError } = await supabase
+    const { data: dbData, error: dbError } = await supabaseAdmin
       .from('services')
       .select('*')
       .eq('tenant_id', '395b50b9-9504-4bda-bd38-7ce5b53e7aa0')
@@ -93,7 +93,7 @@ export async function GET() {
           enabled: s.enabled,
           requires_consultation: s.requires_consultation
         }))
-        await supabase.from('services').insert(dbRows)
+        await supabaseAdmin.from('services').insert(dbRows)
         return NextResponse.json(dbRows)
       }
       return NextResponse.json(dbData)
@@ -160,18 +160,18 @@ export async function POST(req: Request) {
       requires_consultation: s.requires_consultation
     }))
 
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await supabaseAdmin
       .from('services')
       .delete()
       .eq('tenant_id', '395b50b9-9504-4bda-bd38-7ce5b53e7aa0')
 
-    let supabaseConnected = false
+    let supabaseAdminConnected = false
     if (!deleteError) {
-      const { error: insertError } = await supabase
+      const { error: insertError } = await supabaseAdmin
         .from('services')
         .insert(dbRows)
       if (!insertError) {
-        supabaseConnected = true
+        supabaseAdminConnected = true
       }
     }
 
@@ -180,7 +180,7 @@ export async function POST(req: Request) {
     let updateStats = { appointmentsUpdated: 0, patientsRecalculated: 0 }
     
     for (const service of parsed) {
-      const { data: updatedApts, error: updateError } = await supabase
+      const { data: updatedApts, error: updateError } = await supabaseAdmin
         .from('appointments')
         .update({ total_amount: service.price_usd })
         .eq('tenant_id', '395b50b9-9504-4bda-bd38-7ce5b53e7aa0')
@@ -193,7 +193,7 @@ export async function POST(req: Request) {
     }
 
     // 2. Recalculate patients' total spent (LTV) and average values in the database based on updated appointment prices
-    const { data: apts, error: aptError } = await supabase
+    const { data: apts, error: aptError } = await supabaseAdmin
       .from('appointments')
       .select('patient_id, total_amount')
       .eq('tenant_id', '395b50b9-9504-4bda-bd38-7ce5b53e7aa0')
@@ -212,7 +212,7 @@ export async function POST(req: Request) {
 
       for (const [patientId, stats] of Object.entries(patientStats)) {
         const avgVal = stats.count > 0 ? stats.totalSpent / stats.count : 0
-        const { error: patUpdateError } = await supabase
+        const { error: patUpdateError } = await supabaseAdmin
           .from('patients')
           .update({
             total_spent: stats.totalSpent,
@@ -232,7 +232,7 @@ export async function POST(req: Request) {
       success: true, 
       count: parsed.length, 
       services: parsed,
-      supabaseSynced: supabaseConnected,
+      supabaseAdminSynced: supabaseAdminConnected,
       updates: updateStats
     })
   } catch (error: any) {

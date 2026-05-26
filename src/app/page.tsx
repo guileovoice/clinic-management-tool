@@ -17,18 +17,18 @@ import {
   LockKeyhole,
   Check,
   Building,
-  ChevronLeft,
-  ChevronRight
+  ChevronDown
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useClinicStore } from '@/lib/stores/clinicStore'
-
-const SERVICES = [
-  { id: 'CHECKUP', name: 'Routine Checkup & Cleaning', duration: 45, price: 150, description: 'Comprehensive oral exam, polishing, and standard screening.' },
-  { id: 'PROCEDURE', name: 'Teeth Whitening Touch-up', duration: 60, price: 320, description: 'Premium in-office whitening procedure for a radiant smile.' },
-  { id: 'CONSULTATION', name: 'Crown & Aesthetic Consultation', duration: 30, price: 90, description: 'Personalized treatment plan for porcelain crowns and veneers.' },
-  { id: 'EMERGENCY', name: 'Emergency Toothache Relief', duration: 45, price: 200, description: 'Urgent diagnostic examination and immediate pain alleviation.' }
-]
+import { supabase } from '@/lib/supabaseClient'
+import {
+  Select as UISelect,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 const TIME_SLOTS = [
   '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00'
@@ -38,6 +38,8 @@ export default function LandingPage() {
   const { addPatient, addAppointment } = useClinicStore()
 
   const [dynamicServices, setDynamicServices] = useState<any[]>([])
+  const [servicesLoading, setServicesLoading] = useState(true)
+  const [showAllTreatments, setShowAllTreatments] = useState(false)
 
   React.useEffect(() => {
     fetch('/api/services')
@@ -52,17 +54,18 @@ export default function LandingPage() {
             description: s.price_note || `${s.category} treatment`
           }))
           setDynamicServices(mapped)
-          setSelectedService(mapped[0])
+          if (mapped.length > 0) setSelectedService(mapped[0])
         }
       })
       .catch(err => console.warn("Failed to load dynamic services:", err))
+      .finally(() => setServicesLoading(false))
   }, [])
 
-  const activeServices = dynamicServices.length > 0 ? dynamicServices : SERVICES
+  const activeServices = dynamicServices
 
   // Form Booking Wizard States
   const [step, setStep] = useState(1)
-  const [selectedService, setSelectedService] = useState(SERVICES[0])
+  const [selectedService, setSelectedService] = useState<any>(null)
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
   const [patientName, setPatientName] = useState('')
@@ -70,67 +73,35 @@ export default function LandingPage() {
   const [patientEmail, setPatientEmail] = useState('')
   const [insuranceProvider, setInsuranceProvider] = useState('Uninsured')
   const [insurancePolicy, setInsurancePolicy] = useState('')
+  const [bookedSlots, setBookedSlots] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [bookingSuccess, setBookingSuccess] = useState(false)
   const [bookedDetails, setBookedDetails] = useState<any>(null)
 
-  // Custom Calendar Picker States & Helpers
-  const [currentMonth, setCurrentMonth] = useState(new Date())
-
-  const monthNames = [
-    "January", "February", "March", "April", "May", "June", 
-    "July", "August", "September", "October", "November", "December"
-  ]
-
-  const year = currentMonth.getFullYear()
-  const month = currentMonth.getMonth()
-
-  const firstDayIndex = new Date(year, month, 1).getDay()
-  const totalDays = new Date(year, month + 1, 0).getDate()
-
-  const blankDays = Array(firstDayIndex).fill(null)
-  const daysInMonth = Array.from({ length: totalDays }, (_, i) => i + 1)
-
-  const handleSelectDay = (day: number) => {
-    const selected = new Date(year, month, day)
-    const yyyy = selected.getFullYear()
-    const mm = String(selected.getMonth() + 1).padStart(2, '0')
-    const dd = String(selected.getDate()).padStart(2, '0')
-    setSelectedDate(`${yyyy}-${mm}-${dd}`)
-    // Reset time selection if changing date
-    setSelectedTime('')
-  }
-
-  const isPast = (day: number) => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const checkDate = new Date(year, month, day)
-    return checkDate < today
-  }
-
-  const isSelected = (day: number) => {
-    if (!selectedDate) return false
-    const checkDate = new Date(year, month, day)
-    const yyyy = checkDate.getFullYear()
-    const mm = String(checkDate.getMonth() + 1).padStart(2, '0')
-    const dd = String(checkDate.getDate()).padStart(2, '0')
-    return selectedDate === `${yyyy}-${mm}-${dd}`
-  }
-
-  const prevMonth = () => {
-    const today = new Date()
-    if (year === today.getFullYear() && month === today.getMonth()) {
-      return
-    }
-    setCurrentMonth(new Date(year, month - 1, 1))
-  }
-
-  const nextMonth = () => {
-    setCurrentMonth(new Date(year, month + 1, 1))
-  }
+  // Fetch already-booked time slots when date changes
+  React.useEffect(() => {
+    if (!selectedDate) return
+    const tenantId = '395b50b9-9504-4bda-bd38-7ce5b53e7aa0'
+    ;(async () => {
+      const { data } = await supabase
+        .from('appointments')
+        .select('time, status')
+        .eq('tenant_id', tenantId)
+        .eq('date', selectedDate)
+      const taken = (data || [])
+        .filter(a => a.status !== 'CANCELLED')
+        .map(a => (a.time || '').substring(0, 5))
+        .filter(Boolean)
+      setBookedSlots(taken)
+    })()
+  }, [selectedDate])
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!selectedService) {
+      toast.error('Please select a service first.')
+      return
+    }
     if (!selectedDate || !selectedTime || !patientName || !patientPhone) {
       toast.error('Please fill in all required fields.')
       return
@@ -138,41 +109,89 @@ export default function LandingPage() {
 
     setIsSubmitting(true)
     try {
-      const generateUUID = () => {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-          const r = Math.random() * 16 | 0;
-          const v = c === 'x' ? r : (r & 0x3 | 0x8);
-          return v.toString(16);
-        });
-      }
-      const patientId = generateUUID()
       const tenantId = '395b50b9-9504-4bda-bd38-7ce5b53e7aa0'
 
-      // 1. Add patient record to store and Supabase
-      const resolvedPatientId = await addPatient({
-        id: patientId,
-        tenantId,
-        name: patientName,
-        phone: patientPhone,
-        email: patientEmail,
-        preferredChannel: 'VOICE',
-        consents: { essential: true, marketing: true, intelligence: true },
-        totalAppointments: 1,
-        totalSpent: selectedService.price,
-        averageAppointmentValue: selectedService.price,
-        lastAppointmentAt: new Date().toISOString(),
-        firstAppointmentAt: new Date().toISOString(),
-        churnRisk: 'LOW',
-        rfmSegment: 'NEW',
-        insurance: {
-          provider: insuranceProvider,
-          policyNumber: insurancePolicy,
-          status: insuranceProvider === 'Uninsured' ? 'FAILED' : 'PENDING'
-        },
-        treatmentHistory: [selectedService.name],
-        allergens: [],
-        medications: []
-      })
+      // 0. Check for conflicting appointments at same date+time
+      const { data: conflicts } = await supabase
+        .from('appointments')
+        .select('id, status')
+        .eq('tenant_id', tenantId)
+        .eq('date', selectedDate)
+        .eq('time', `${selectedTime}:00`)
+
+      const activeConflicts = (conflicts || []).filter(c => c.status !== 'CANCELLED')
+      if (activeConflicts.length > 0) {
+        toast.error('This time slot is already booked. Please choose another date or time.')
+        setIsSubmitting(false)
+        return
+      }
+
+      // 1. Lookup existing patient by phone or create new one
+      const { data: existingPatient } = await supabase
+        .from('patients')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('phone', patientPhone)
+        .maybeSingle()
+
+      let resolvedPatientId: string
+      if (existingPatient) {
+        resolvedPatientId = existingPatient.id
+      } else {
+        const generateUUID = () => {
+          return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+          });
+        }
+        const patientId = generateUUID()
+
+        const { error: patErr } = await supabase
+          .from('patients')
+          .insert({
+            id: patientId,
+            tenant_id: tenantId,
+            name: patientName,
+            phone: patientPhone,
+            email: patientEmail || null,
+            preferred_channel: 'VOICE',
+            consents: { essential: true, marketing: true, intelligence: true },
+            insurance: {
+              provider: insuranceProvider,
+              policyNumber: insurancePolicy,
+              status: insuranceProvider === 'Uninsured' ? 'FAILED' : 'PENDING'
+            },
+            total_appointments: 1,
+            total_spent: selectedService.price,
+            average_appointment_value: selectedService.price,
+            first_appointment_at: new Date().toISOString(),
+            last_appointment_at: new Date().toISOString(),
+            treatment_history: [selectedService.name],
+            allergens: [],
+            medications: []
+          })
+
+        if (patErr) {
+          if (patErr.code === '23505') {
+            const { data: retry } = await supabase
+              .from('patients')
+              .select('id')
+              .eq('tenant_id', tenantId)
+              .eq('phone', patientPhone)
+              .maybeSingle()
+            if (retry) {
+              resolvedPatientId = retry.id
+            } else {
+              throw patErr
+            }
+          } else {
+            throw patErr
+          }
+        } else {
+          resolvedPatientId = patientId
+        }
+      }
 
       // 2. Add appointment record
       await addAppointment({
@@ -190,6 +209,21 @@ export default function LandingPage() {
         insuranceVerified: insuranceProvider !== 'Uninsured',
         notes: `Online booking from public clinic website.`
       })
+
+      // 3. Send WhatsApp booking confirmation
+      try {
+        await supabase.from('whatsapp_messages').insert({
+          tenant_id: tenantId,
+          contact_name: patientName,
+          phone_number: patientPhone,
+          direction: 'outbound',
+          message_body: `Hello ${patientName}, your appointment for ${selectedService.name} has been booked for ${selectedDate} at ${selectedTime}. Thank you for choosing Origem Dental Aesthetic Clinic.`,
+          status: 'sent',
+          appointment_status: 'Confirmed'
+        })
+      } catch (waErr) {
+        console.warn('Failed to send WhatsApp confirmation:', waErr)
+      }
 
       setBookedDetails({
         serviceName: selectedService.name,
@@ -338,7 +372,7 @@ export default function LandingPage() {
       {/* TREATMENTS / SERVICES SECTION */}
       <section id="services" className="py-24 border-y border-white/5 bg-surface/20">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center max-w-xl mx-auto space-y-3 mb-16">
+          <div className="text-center max-w-xl mx-auto space-y-3 mb-12">
             <span className="text-[10px] font-black uppercase tracking-widest text-primary">Treatments Menu</span>
             <h2 className="text-3xl font-black uppercase tracking-wider">Aesthetic & Dental Procedures</h2>
             <p className="text-text-muted text-xs leading-relaxed">
@@ -346,30 +380,55 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {activeServices.map((srv) => (
-              <div 
-                key={srv.id} 
-                className="p-6 bg-surface border border-border/60 rounded-2xl flex flex-col justify-between hover:border-primary/40 transition-all group"
-              >
-                <div className="space-y-4">
-                  <span className="text-[8px] font-mono bg-white/5 border border-white/10 px-2 py-0.5 rounded uppercase tracking-wider text-text-muted block w-max">
-                    {srv.duration} mins duration
-                  </span>
-                  <h4 className="text-xs font-black uppercase tracking-wider text-white group-hover:text-primary transition-colors">
-                    {srv.name}
-                  </h4>
-                  <p className="text-[10px] text-text-muted leading-relaxed">
-                    {srv.description}
-                  </p>
-                </div>
-                <div className="border-t border-white/5 pt-4 mt-6 flex justify-between items-center">
-                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Clinic Price</span>
-                  <span className="text-sm font-black text-white font-mono">${srv.price}.00</span>
-                </div>
+          {servicesLoading ? (
+            <div className="text-center py-12">
+              <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
+              <p className="text-xs text-text-muted mt-4 font-semibold">Loading treatments...</p>
+            </div>
+          ) : activeServices.length > 0 ? (
+            <>
+              <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 overflow-hidden transition-all duration-500 ${showAllTreatments ? '' : 'max-h-[320px]'}`}>
+                {(showAllTreatments ? activeServices : activeServices.slice(0, 4)).map((srv) => (
+                  <div 
+                    key={srv.id} 
+                    className="p-6 bg-surface border border-border/60 rounded-2xl flex flex-col justify-between hover:border-primary/40 transition-all group"
+                  >
+                    <div className="space-y-4">
+                      <span className="text-[8px] font-mono bg-white/5 border border-white/10 px-2 py-0.5 rounded uppercase tracking-wider text-text-muted block w-max">
+                        {srv.duration} mins duration
+                      </span>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-white group-hover:text-primary transition-colors">
+                        {srv.name}
+                      </h4>
+                      <p className="text-[10px] text-text-muted leading-relaxed">
+                        {srv.description}
+                      </p>
+                    </div>
+                    <div className="border-t border-white/5 pt-4 mt-6 flex justify-between items-center">
+                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Clinic Price</span>
+                      <span className="text-sm font-black text-white font-mono">${srv.price}.00</span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+
+              {activeServices.length > 4 && (
+                <div className="text-center mt-8">
+                  <button
+                    onClick={() => setShowAllTreatments(!showAllTreatments)}
+                    className="px-6 h-11 border border-primary/30 hover:border-primary text-primary rounded-xl text-xs font-black uppercase tracking-wider transition-all inline-flex items-center gap-2"
+                  >
+                    {showAllTreatments ? 'Show Less' : `View All ${activeServices.length} Treatments`}
+                    <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showAllTreatments ? 'rotate-180' : ''}`} />
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-xs text-text-muted font-semibold">No services available at the moment. Please check back later.</p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -458,35 +517,58 @@ export default function LandingPage() {
               {step === 1 && (
                 <div className="space-y-4 animate-in fade-in duration-300">
                   <h3 className="text-xs font-black uppercase tracking-widest text-text-muted mb-2">Select Your Required Treatment:</h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    {activeServices.map((srv) => (
-                      <button
-                        type="button"
-                        key={srv.id}
-                        onClick={() => setSelectedService(srv)}
-                        className={`p-4 bg-surface2/60 border rounded-xl text-left transition-all flex justify-between items-center ${
-                          selectedService.id === srv.id 
-                            ? 'border-primary shadow-lg shadow-primary/5 bg-primary/5' 
-                            : 'border-border/60 hover:border-white/20'
-                        }`}
+
+                  {servicesLoading ? (
+                    <div className="flex items-center gap-3 py-6 text-text-muted text-xs">
+                      <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                      Loading available treatments...
+                    </div>
+                  ) : activeServices.length > 0 ? (
+                    <>
+                      <UISelect
+                        value={selectedService?.id || ''}
+                        onValueChange={(val) => {
+                          const srv = activeServices.find(s => s.id === val)
+                          if (srv) setSelectedService(srv)
+                        }}
                       >
-                        <div className="space-y-1">
-                          <h4 className="text-xs font-bold text-white uppercase tracking-wider">{srv.name}</h4>
-                          <p className="text-[10px] text-text-muted leading-tight">{srv.description}</p>
+                        <SelectTrigger className="w-full bg-surface2 border-border h-12 px-4 text-sm font-semibold rounded-xl text-white focus:border-primary transition-all cursor-pointer">
+                          <SelectValue placeholder="Choose a treatment..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-surface border-border text-white">
+                          {activeServices.map((srv) => (
+                            <SelectItem key={srv.id} value={srv.id} className="text-sm font-semibold text-white focus:bg-primary/20 focus:text-white">
+                              {srv.name} — ${srv.price} ({srv.duration} min)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </UISelect>
+
+                      {selectedService && (
+                        <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-2 animate-in fade-in duration-200">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="text-sm font-bold text-white">{selectedService.name}</h4>
+                              <p className="text-[10px] text-text-muted mt-0.5">{selectedService.description}</p>
+                            </div>
+                            <span className="text-lg font-black text-primary font-mono">${selectedService.price}</span>
+                          </div>
+                          <div className="flex items-center gap-4 text-[10px] text-text-muted font-mono border-t border-primary/10 pt-2 mt-2">
+                            <span>Duration: {selectedService.duration} minutes</span>
+                          </div>
                         </div>
-                        <div className="text-right shrink-0 ml-4">
-                          <span className="text-xs font-black text-white font-mono block">${srv.price}</span>
-                          <span className="text-[8px] text-text-muted uppercase font-bold">{srv.duration} mins</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-xs text-text-muted text-center py-4">No services available. Please check back later.</p>
+                  )}
 
                   <div className="pt-4 flex justify-end">
                     <button
                       type="button"
+                      disabled={!selectedService}
                       onClick={() => setStep(2)}
-                      className="px-6 h-11 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all"
+                      className="px-6 h-11 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all disabled:opacity-50"
                     >
                       Next Step <ArrowRight className="w-4 h-4" />
                     </button>
@@ -498,117 +580,60 @@ export default function LandingPage() {
               {step === 2 && (
                 <div className="space-y-6 animate-in fade-in duration-300">
                   <h3 className="text-xs font-black uppercase tracking-widest text-text-muted mb-2">Choose Date & Time:</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-                    
-                    {/* CALENDAR COLUMN */}
-                    <div className="md:col-span-7 space-y-3.5">
-                      <label className="text-[9px] font-black text-text-muted uppercase tracking-widest flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-primary" /> Select Visit Date
-                      </label>
-                      
-                      <div className="p-4 bg-surface2 border border-border/80 rounded-xl space-y-4 shadow-sm">
-                        {/* Month Selector */}
-                        <div className="flex items-center justify-between pb-2 border-b border-white/5">
-                          <button
-                            type="button"
-                            onClick={prevMonth}
-                            className="p-1 hover:bg-white/5 rounded-lg border border-white/10 text-white disabled:opacity-30 disabled:hover:bg-transparent"
-                            disabled={year === new Date().getFullYear() && month === new Date().getMonth()}
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                          </button>
-                          <span className="text-[10px] font-black uppercase tracking-wider text-white font-mono">
-                            {monthNames[month]} {year}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={nextMonth}
-                            className="p-1 hover:bg-white/5 rounded-lg border border-white/10 text-white"
-                          >
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
-                        </div>
 
-                        {/* Weekday Header */}
-                        <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-black uppercase text-text-muted font-mono">
-                          <div>Su</div>
-                          <div>Mo</div>
-                          <div>Tu</div>
-                          <div>We</div>
-                          <div>Th</div>
-                          <div>Fr</div>
-                          <div>Sa</div>
-                        </div>
-
-                        {/* Calendar Grid */}
-                        <div className="grid grid-cols-7 gap-1 text-center">
-                          {blankDays.map((_, index) => (
-                            <div key={`blank-${index}`} className="h-8" />
-                          ))}
-                          {daysInMonth.map((day) => {
-                            const past = isPast(day)
-                            const selected = isSelected(day)
-                            return (
-                              <button
-                                key={`day-${day}`}
-                                type="button"
-                                disabled={past}
-                                onClick={() => handleSelectDay(day)}
-                                className={`h-8 w-8 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center mx-auto ${
-                                  selected 
-                                    ? 'bg-primary text-white border border-primary/50 shadow-md shadow-primary/20 font-black' 
-                                    : past 
-                                      ? 'text-white/20 cursor-not-allowed' 
-                                      : 'text-white hover:bg-white/5 hover:text-white'
-                                }`}
-                              >
-                                {day}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Display Selected Date */}
-                      {selectedDate && (
-                        <div className="text-[10px] font-mono text-emerald-400 font-bold flex items-center gap-1.5 animate-in fade-in duration-200">
-                          <Check className="w-3.5 h-3.5" /> Selected: {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* TIME SLOTS COLUMN */}
-                    <div className="md:col-span-5 space-y-3.5">
-                      <label className="text-[9px] font-black text-text-muted uppercase tracking-widest flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-primary" /> Available Slots
-                      </label>
-                      
-                      <div className="grid grid-cols-2 gap-2">
-                        {TIME_SLOTS.map((slot) => (
-                          <button
-                            type="button"
-                            key={slot}
-                            disabled={!selectedDate}
-                            onClick={() => setSelectedTime(slot)}
-                            className={`h-11 bg-surface2/60 border rounded-xl text-[11px] font-mono font-bold transition-all flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed ${
-                              selectedTime === slot 
-                                ? 'border-primary bg-primary/5 text-primary shadow-lg shadow-primary/5' 
-                                : 'border-border/60 hover:border-white/20 text-white'
-                            }`}
-                          >
-                            {slot}
-                          </button>
-                        ))}
-                      </div>
-                      {!selectedDate && (
-                        <p className="text-[9px] text-text-muted italic leading-normal font-mono">
-                          Please select a date on the calendar first to view available time slots.
-                        </p>
-                      )}
-                    </div>
-
+                  {/* Date Input */}
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black text-text-muted uppercase tracking-widest flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-primary" /> Select Visit Date
+                    </label>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => { setSelectedDate(e.target.value); setSelectedTime('') }}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full bg-surface2 border border-border h-12 px-4 text-sm font-semibold rounded-xl text-white focus:border-primary transition-all [color-scheme:dark] cursor-pointer"
+                    />
                   </div>
+
+                  {/* Time Dropdown */}
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black text-text-muted uppercase tracking-widest flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-primary" /> Select Time Slot
+                    </label>
+                    <UISelect
+                      value={selectedTime}
+                      onValueChange={setSelectedTime}
+                      disabled={!selectedDate}
+                    >
+                      <SelectTrigger className="w-full bg-surface2 border-border h-12 px-4 text-sm font-semibold rounded-xl text-white focus:border-primary transition-all disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
+                        <SelectValue placeholder={selectedDate ? 'Choose a time...' : 'Select a date first...'} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-surface border-border text-white">
+                        {TIME_SLOTS.map((slot) => {
+                          const isBooked = bookedSlots.includes(slot)
+                          return (
+                            <SelectItem key={slot} value={slot} disabled={isBooked} className={`text-sm font-semibold text-white focus:bg-primary/20 focus:text-white ${isBooked ? 'line-through text-text-muted/50' : ''}`}>
+                              {slot} — {isBooked ? 'Already Booked' : parseInt(slot) < 12 ? 'Morning' : parseInt(slot) < 17 ? 'Afternoon' : 'Evening'}
+                            </SelectItem>
+                          )
+                        })}
+                      </SelectContent>
+                    </UISelect>
+                  </div>
+
+                  {/* Selected Date/Time Summary */}
+                  {selectedDate && selectedTime && (
+                    <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl flex items-center gap-3 animate-in fade-in duration-200">
+                      <Check className="w-5 h-5 text-emerald-500 shrink-0" />
+                      <div className="text-xs text-text-muted">
+                        <span className="text-white font-bold">
+                          {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        </span>
+                        <span className="mx-2">at</span>
+                        <span className="text-primary font-bold">{selectedTime}</span>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="pt-4 flex justify-between border-t border-white/5">
                     <button
@@ -633,11 +658,11 @@ export default function LandingPage() {
               {/* STEP 3: PATIENT INFORMATION */}
               {step === 3 && (
                 <div className="space-y-5 animate-in fade-in duration-300">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-text-muted mb-2">Patient Details & Verification:</h3>
+                  <h3 className="text-xs font-black uppercase tracking-widest text-text-muted mb-2">Your Details:</h3>
 
                   <div className="space-y-1.5">
                     <label className="text-[9px] font-black text-text-muted uppercase tracking-widest flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5" /> Full Name
+                      <User className="w-3.5 h-3.5" /> Full Name <span className="text-danger">*</span>
                     </label>
                     <input 
                       type="text"
@@ -645,14 +670,14 @@ export default function LandingPage() {
                       placeholder="e.g. John Doe"
                       value={patientName}
                       onChange={(e) => setPatientName(e.target.value)}
-                      className="w-full bg-surface2 border border-border h-11 px-4 text-xs font-semibold rounded-xl text-white focus:border-primary transition-all"
+                      className="w-full bg-surface2 border border-border h-12 px-4 text-sm font-semibold rounded-xl text-white focus:border-primary transition-all"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[9px] font-black text-text-muted uppercase tracking-widest flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5" /> Phone Number
+                        <Phone className="w-3.5 h-3.5" /> Phone Number <span className="text-danger">*</span>
                       </label>
                       <input 
                         type="tel"
@@ -660,61 +685,63 @@ export default function LandingPage() {
                         placeholder="+1-212-555-0199"
                         value={patientPhone}
                         onChange={(e) => setPatientPhone(e.target.value)}
-                        className="w-full bg-surface2 border border-border h-11 px-4 text-xs font-mono font-semibold rounded-xl text-white focus:border-primary transition-all"
+                        className="w-full bg-surface2 border border-border h-12 px-4 text-sm font-mono font-semibold rounded-xl text-white focus:border-primary transition-all"
                       />
                     </div>
 
                     <div className="space-y-1.5">
                       <label className="text-[9px] font-black text-text-muted uppercase tracking-widest flex items-center gap-1.5">
-                        <Mail className="w-3.5 h-3.5" /> Email Address
+                        <Mail className="w-3.5 h-3.5" /> Email Address <span className="text-text-muted/50">(optional)</span>
                       </label>
                       <input 
                         type="email"
-                        required
                         placeholder="john.doe@gmail.com"
                         value={patientEmail}
                         onChange={(e) => setPatientEmail(e.target.value)}
-                        className="w-full bg-surface2 border border-border h-11 px-4 text-xs font-mono font-semibold rounded-xl text-white focus:border-primary transition-all"
+                        className="w-full bg-surface2 border border-border h-12 px-4 text-sm font-mono font-semibold rounded-xl text-white focus:border-primary transition-all"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-white/5 pt-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black text-text-muted uppercase tracking-widest flex items-center gap-1.5">
-                        <Building className="w-3.5 h-3.5" /> Insurance Provider
-                      </label>
-                      <select 
+                  <div className="border-t border-white/5 pt-5">
+                    <label className="text-[9px] font-black text-text-muted uppercase tracking-widest flex items-center gap-1.5 mb-3">
+                      <Building className="w-3.5 h-3.5" /> Insurance Information
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <UISelect
                         value={insuranceProvider}
-                        onChange={(e) => setInsuranceProvider(e.target.value)}
-                        className="w-full bg-surface2 border border-border h-11 px-4 text-xs font-semibold rounded-xl text-white focus:border-primary transition-all"
+                        onValueChange={setInsuranceProvider}
                       >
-                        <option value="Uninsured">No Insurance (Self Pay)</option>
-                        <option value="Delta Dental">Delta Dental</option>
-                        <option value="Cigna Dental">Cigna Dental</option>
-                        <option value="MetLife Dental">MetLife Dental</option>
-                        <option value="Guardian Dental">Guardian Dental</option>
-                      </select>
-                    </div>
+                        <SelectTrigger className="w-full bg-surface2 border-border h-12 px-4 text-sm font-semibold rounded-xl text-white cursor-pointer">
+                          <SelectValue placeholder="Select insurance..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-surface border-border text-white">
+                          <SelectItem value="Uninsured" className="text-sm font-semibold text-white focus:bg-primary/20 focus:text-white">No Insurance (Self Pay)</SelectItem>
+                          <SelectItem value="Delta Dental" className="text-sm font-semibold text-white focus:bg-primary/20 focus:text-white">Delta Dental</SelectItem>
+                          <SelectItem value="Cigna Dental" className="text-sm font-semibold text-white focus:bg-primary/20 focus:text-white">Cigna Dental</SelectItem>
+                          <SelectItem value="MetLife Dental" className="text-sm font-semibold text-white focus:bg-primary/20 focus:text-white">MetLife Dental</SelectItem>
+                          <SelectItem value="Guardian Dental" className="text-sm font-semibold text-white focus:bg-primary/20 focus:text-white">Guardian Dental</SelectItem>
+                          <SelectItem value="Aetna Dental" className="text-sm font-semibold text-white focus:bg-primary/20 focus:text-white">Aetna Dental</SelectItem>
+                          <SelectItem value="UnitedHealthcare" className="text-sm font-semibold text-white focus:bg-primary/20 focus:text-white">UnitedHealthcare</SelectItem>
+                        </SelectContent>
+                      </UISelect>
 
-                    {insuranceProvider !== 'Uninsured' && (
-                      <div className="space-y-1.5 animate-in slide-in-from-left duration-200">
-                        <label className="text-[9px] font-black text-text-muted uppercase tracking-widest flex items-center gap-1.5">
-                          <ShieldCheck className="w-3.5 h-3.5" /> Policy Number
-                        </label>
-                        <input 
-                          type="text"
-                          required
-                          placeholder="e.g. DD-88219"
-                          value={insurancePolicy}
-                          onChange={(e) => setInsurancePolicy(e.target.value)}
-                          className="w-full bg-surface2 border border-border h-11 px-4 text-xs font-mono font-semibold rounded-xl text-white focus:border-primary transition-all"
-                        />
-                      </div>
-                    )}
+                      {insuranceProvider !== 'Uninsured' && (
+                        <div className="space-y-1.5 animate-in slide-in-from-left duration-200">
+                          <input 
+                            type="text"
+                            required
+                            placeholder="Policy Number"
+                            value={insurancePolicy}
+                            onChange={(e) => setInsurancePolicy(e.target.value)}
+                            className="w-full bg-surface2 border border-border h-12 px-4 text-sm font-mono font-semibold rounded-xl text-white focus:border-primary transition-all"
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="pt-6 flex justify-between">
+                  <div className="pt-6 flex justify-between border-t border-white/5">
                     <button
                       type="button"
                       onClick={() => setStep(2)}

@@ -34,7 +34,7 @@ export function DateRangeFilter() {
   const [hoveredDate, setHoveredDate] = useState<string | null>(null)
   
   // Left calendar's month
-  const [leftMonth, setLeftMonth] = useState<Date>(() => startOfMonth(parseISO(dateRange.start)))
+  const [leftMonth, setLeftMonth] = useState<Date>(() => startOfMonth(dateRange.start ? parseISO(dateRange.start) : new Date()))
   const rightMonth = addMonths(leftMonth, 1)
 
   // Track active preset
@@ -45,7 +45,10 @@ export function DateRangeFilter() {
     if (isOpen) {
       setTempStart(dateRange.start)
       setTempEnd(dateRange.end)
-      setLeftMonth(startOfMonth(parseISO(dateRange.start)))
+      const parsed = dateRange.start ? parseISO(dateRange.start) : new Date()
+      if (!isNaN(parsed.getTime())) {
+        setLeftMonth(startOfMonth(parsed))
+      }
     }
   }, [isOpen, dateRange])
 
@@ -169,16 +172,26 @@ export function DateRangeFilter() {
   }
 
   const handleClear = () => {
-    const today = new Date().toISOString().split('T')[0]
-    setTempStart(today)
-    setTempEnd(today)
-    setActivePreset('Today')
-    setLeftMonth(startOfMonth(new Date()))
+    const today = new Date()
+    const start = subDays(today, 6).toISOString().split('T')[0]
+    const end = today.toISOString().split('T')[0]
+    setDateRange({ start, end })
+    setTempStart(start)
+    setTempEnd(end)
+    setActivePreset('Last 7 days')
+    setLeftMonth(startOfMonth(today))
+    setIsOpen(false)
   }
 
   const displayLabel = () => {
+    if (!dateRange.start && !dateRange.end) return 'All time'
     const s = parseISO(dateRange.start)
+    if (isNaN(s.getTime())) return 'Invalid date'
+    if (!dateRange.end) {
+      return format(s, 'MMMM d, yyyy') + ' –'
+    }
     const e = parseISO(dateRange.end)
+    if (isNaN(e.getTime())) return format(s, 'MMMM d, yyyy') + ' –'
     if (isSameDay(s, e)) {
       return format(s, 'MMMM d, yyyy')
     }
@@ -200,6 +213,7 @@ export function DateRangeFilter() {
     const d = startOfDay(date)
     const s = startOfDay(parseISO(startStr))
     const e = endOfDay(parseISO(endStr))
+    if (isNaN(s.getTime()) || isNaN(e.getTime())) return false
     return isWithinInterval(d, { start: s, end: e })
   }
 
@@ -208,12 +222,14 @@ export function DateRangeFilter() {
     const d = startOfDay(date)
     const s = startOfDay(parseISO(startStr))
     const h = startOfDay(parseISO(hoverStr))
+    if (isNaN(s.getTime()) || isNaN(h.getTime())) return false
     if (h < s) return false
     return isWithinInterval(d, { start: s, end: h })
   }
 
   const renderCalendarMonth = (monthDate: Date, showPrevArrow = false, showNextArrow = false) => {
-    const days = getDaysForMonth(monthDate)
+    const isValid = monthDate && !isNaN(monthDate.getTime())
+    const days = isValid ? getDaysForMonth(monthDate) : []
     const weekdayNames = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
     return (
@@ -232,7 +248,7 @@ export function DateRangeFilter() {
           )}
 
           <span className="text-xs font-bold text-text-primary uppercase tracking-wider absolute left-1/2 -translate-x-1/2">
-            {format(monthDate, 'MMMM yyyy')}
+            {isValid ? format(monthDate, 'MMMM yyyy') : '—'}
           </span>
 
           {showNextArrow ? (
@@ -260,7 +276,7 @@ export function DateRangeFilter() {
         <div className="grid grid-cols-7 gap-y-1 text-center">
           {days.map((day, idx) => {
             const dateStr = day.toISOString().split('T')[0]
-            const isCurrentMonth = isSameMonth(day, monthDate)
+            const isCurrentMonth = isValid && isSameMonth(day, monthDate)
             const isSelectedStart = tempStart && dateStr === tempStart
             const isSelectedEnd = tempEnd && dateStr === tempEnd
             

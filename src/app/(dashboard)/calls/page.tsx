@@ -47,7 +47,7 @@ interface ParsedMessage {
 }
 
 export default function CallLogsPage() {
-  // Filter by Date Range - uses timestamp (mapped from created_at)
+  // Filter by Date Range - uses createdAt (mapped from created_at)
   const dateFilteredLogs = useFilteredCallLogs()
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -65,8 +65,8 @@ export default function CallLogsPage() {
   // 1. CALLS TODAY: count of calls today.
   const todayStr = new Date().toISOString().split('T')[0]
   const callsTodayCount = dateFilteredLogs.filter(log => {
-    if (!log.timestamp) return false
-    return log.timestamp.split('T')[0] === todayStr
+    if (!log.createdAt) return false
+    return log.createdAt.split('T')[0] === todayStr
   }).length
 
   // 2. TOTAL COST (USD): sum of cost of calls in selected date range.
@@ -354,7 +354,7 @@ export default function CallLogsPage() {
                       
                       {/* Time */}
                       <td className="p-4 text-xs text-text-muted">
-                        {log.timestamp ? format(new Date(log.timestamp), 'MMM d, h:mm a') : '—'}
+                        {log.createdAt ? format(new Date(log.createdAt), 'MMM d, h:mm a') : '—'}
                       </td>
                       
                       {/* Duration */}
@@ -454,7 +454,7 @@ export default function CallLogsPage() {
                   Call Analysis
                 </h3>
                 <p className="text-xs text-text-muted font-semibold mt-1">
-                  {activeCallDetails.timestamp ? format(new Date(activeCallDetails.timestamp), 'MMMM d, yyyy · h:mm a') : '—'}
+                  {activeCallDetails.createdAt ? format(new Date(activeCallDetails.createdAt), 'MMMM d, yyyy · h:mm a') : '—'}
                 </p>
               </div>
 
