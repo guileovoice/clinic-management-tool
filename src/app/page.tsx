@@ -225,6 +225,20 @@ export default function LandingPage() {
         console.warn('Failed to send WhatsApp confirmation:', waErr)
       }
 
+      // 3b. Send SMS booking confirmation
+      try {
+        await supabase.from('sms_messages').insert({
+          tenant_id: tenantId,
+          contact_name: patientName,
+          phone_number: patientPhone,
+          direction: 'outbound',
+          message_body: `Hello ${patientName}, your appointment for ${selectedService.name} has been booked for ${selectedDate} at ${selectedTime}. Thank you for choosing Origem Dental Aesthetic Clinic.`,
+          status: 'queued'
+        })
+      } catch (smsErr) {
+        console.warn('Failed to send SMS confirmation:', smsErr)
+      }
+
       setBookedDetails({
         serviceName: selectedService.name,
         date: selectedDate,

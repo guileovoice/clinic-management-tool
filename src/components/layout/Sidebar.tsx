@@ -26,6 +26,7 @@ const navItems = [
   { href: '/calls', label: 'Call Logs', icon: PhoneCall },
   { href: '/campaigns', label: 'Outreach Campaigns', icon: Send },
   { href: '/whatsapp', label: 'WhatsApp', icon: MessageSquare },
+  { href: '/sms', label: 'SMS Connectivity', icon: MessageSquare },
   { href: '/audiences', label: 'Ad Sync Audiences', icon: Target },
   { href: '/settings', label: 'System Settings', icon: Settings },
 ]
