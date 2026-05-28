@@ -473,7 +473,7 @@ export default function ClinicalCalendarPage() {
           {selectedApt ? (
             <Card className="p-6 bg-surface border-border animate-in slide-in-from-right duration-300">
               <h3 className="text-base font-black text-text-primary uppercase tracking-wider mb-4 border-b border-border pb-2 flex items-center gap-2">
-                <Users className="w-5 h-5 text-primary" /> Visit Management
+                <Users className="w-5 h-5 text-primary" /> Visit management
               </h3>
               
               <div className="space-y-4">
@@ -509,7 +509,7 @@ export default function ClinicalCalendarPage() {
                       onClick={() => handleUpdateStatus(selectedApt.id, 'COMPLETED')}
                       className="bg-emerald-600 hover:bg-emerald-500 text-white gap-2 font-bold text-[10px] uppercase tracking-wider"
                     >
-                      <UserCheck className="w-3.5 h-3.5" /> Check-in Complete
+                      <UserCheck className="w-3.5 h-3.5" /> Check in Complete
                     </Button>
                     <Button 
                       onClick={() => handleUpdateStatus(selectedApt.id, 'NO_SHOW')}
