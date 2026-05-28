@@ -3,15 +3,13 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
-import { Lock, Mail, ShieldAlert, KeyRound, Sparkles } from 'lucide-react'
-import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -31,7 +29,7 @@ export default function LoginPage() {
         toast.success(`Welcome back, ${data.name}!`)
         window.location.href = '/overview'
       } else {
-        toast.error(data.error || 'Invalid clinical credentials.')
+        toast.error(data.error || 'Invalid credentials.')
         setIsLoading(false)
       }
     } catch {
@@ -41,90 +39,272 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center bg-[#09090b] overflow-hidden px-4">
-      {/* Decorative gradient glowing blobs */}
-      <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[400px] h-[400px] bg-emerald-500/5 rounded-full blur-[140px] pointer-events-none" />
-      
-      {/* Subtle Grid Background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+    <div style={{
+      minHeight: '100vh',
+      width: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#0d0d14',
+      fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
+      padding: '1rem',
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      {/* Subtle radial glow behind card */}
+      <div style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '600px',
+        height: '500px',
+        background: 'radial-gradient(ellipse at center, rgba(108,60,225,0.12) 0%, transparent 70%)',
+        pointerEvents: 'none',
+      }} />
 
-      <div className="w-full max-w-md relative z-10 space-y-6">
-        <div className="flex flex-col items-center text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-emerald-500 flex items-center justify-center shadow-lg shadow-primary/20 border border-white/10">
-            <Sparkles className="w-6 h-6 text-white" />
+      {/* Login Card */}
+      <div style={{
+        width: '100%',
+        maxWidth: '400px',
+        backgroundColor: '#16161f',
+        borderRadius: '16px',
+        border: '1px solid #2a2a3a',
+        padding: '40px 36px 36px',
+        position: 'relative',
+        zIndex: 10,
+        boxShadow: '0 24px 80px rgba(0,0,0,0.5)',
+      }}>
+        {/* Logo + Branding */}
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          {/* G Icon */}
+          <div style={{
+            width: '54px',
+            height: '54px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #7c4ff0 0%, #5b2fe0 100%)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '14px',
+            boxShadow: '0 8px 24px rgba(108,60,225,0.35)',
+          }}>
+            <span style={{
+              color: '#fff',
+              fontSize: '22px',
+              fontWeight: '800',
+              letterSpacing: '-0.5px',
+            }}>G</span>
           </div>
-          <h1 className="text-2xl font-black text-white tracking-wider uppercase font-mono mt-2">
-            Guileo Clinic Portal
-          </h1>
-          <p className="text-xs text-text-muted max-w-[280px]">
-            Access clinical workflows, VAPI voice agents, and safety Gateway metrics.
+
+          {/* GuileoAI */}
+          <div style={{ marginBottom: '4px' }}>
+            <span style={{ color: '#f1f1f3', fontSize: '22px', fontWeight: '700', letterSpacing: '-0.3px' }}>Guileo</span>
+            <span style={{ color: '#8b6cf7', fontSize: '22px', fontWeight: '700', letterSpacing: '-0.3px' }}>AI</span>
+          </div>
+
+          <p style={{ color: '#7b7b95', fontSize: '13px', fontWeight: '400', margin: 0 }}>
+            Clinic Dashboard
           </p>
         </div>
 
-        <Card className="p-8 bg-surface border-border/80 backdrop-blur-md shadow-2xl rounded-2xl space-y-6">
-          <div className="border-b border-border/60 pb-4">
-            <h2 className="text-sm font-bold text-text-primary uppercase tracking-wider flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-primary" /> Sign In Required
-            </h2>
-            <p className="text-[10px] text-text-muted mt-1">Please enter your clinical email and credentials below.</p>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            {/* Email Address */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-text-muted uppercase tracking-widest flex items-center gap-1.5">
-                <Mail className="w-3 h-3 text-text-muted" /> Email Address
-              </label>
-              <Input
+        <form onSubmit={handleLogin}>
+          {/* Email Field */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{
+              display: 'block',
+              color: '#9090a8',
+              fontSize: '11px',
+              fontWeight: '700',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              marginBottom: '8px',
+            }}>
+              Email
+            </label>
+            <div style={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+            }}>
+              <Mail style={{
+                position: 'absolute',
+                left: '14px',
+                color: '#5c5c72',
+                width: '16px',
+                height: '16px',
+                flexShrink: 0,
+              }} />
+              <input
+                id="login-email"
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="info@scalepods.co"
-                className="bg-surface2 border-border/80 h-11 text-xs font-mono font-semibold text-text-primary focus:border-primary/50 transition-all rounded-xl"
+                placeholder="name@clinic.com"
+                style={{
+                  width: '100%',
+                  padding: '11px 14px 11px 42px',
+                  backgroundColor: '#1e1e2a',
+                  border: '1px solid #2e2e3f',
+                  borderRadius: '8px',
+                  color: '#d0d0e0',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box',
+                }}
+                onFocus={(e) => { e.target.style.borderColor = '#6c3ce1' }}
+                onBlur={(e) => { e.target.style.borderColor = '#2e2e3f' }}
               />
             </div>
+          </div>
 
-            {/* Password */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-text-muted uppercase tracking-widest flex items-center gap-1.5">
-                <Lock className="w-3 h-3 text-text-muted" /> Password
-              </label>
-              <Input
-                type="password"
+          {/* Password Field */}
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{
+              display: 'block',
+              color: '#9090a8',
+              fontSize: '11px',
+              fontWeight: '700',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              marginBottom: '8px',
+            }}>
+              Password
+            </label>
+            <div style={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+            }}>
+              <Lock style={{
+                position: 'absolute',
+                left: '14px',
+                color: '#5c5c72',
+                width: '16px',
+                height: '16px',
+                flexShrink: 0,
+              }} />
+              <input
+                id="login-password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••••"
-                className="bg-surface2 border-border/80 h-11 text-xs font-mono font-semibold text-text-primary focus:border-primary/50 transition-all rounded-xl"
+                placeholder="Enter your password"
+                style={{
+                  width: '100%',
+                  padding: '11px 44px 11px 42px',
+                  backgroundColor: '#1e1e2a',
+                  border: '1px solid #2e2e3f',
+                  borderRadius: '8px',
+                  color: '#d0d0e0',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box',
+                }}
+                onFocus={(e) => { e.target.style.borderColor = '#6c3ce1' }}
+                onBlur={(e) => { e.target.style.borderColor = '#2e2e3f' }}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '14px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#5c5c72',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: 0,
+                }}
+              >
+                {showPassword
+                  ? <EyeOff style={{ width: '16px', height: '16px' }} />
+                  : <Eye style={{ width: '16px', height: '16px' }} />
+                }
+              </button>
             </div>
+          </div>
 
-            {/* Compliance Info Banner */}
-            <div className="p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl flex items-start gap-2.5">
-              <ShieldAlert className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-              <div className="space-y-0.5">
-                <span className="text-[9px] font-black text-emerald-400 uppercase tracking-wider block">HIPAA Secured Session</span>
-                <span className="text-[9px] text-text-muted leading-relaxed block">
-                  All active sessions are fully audited. Access tokens are TLS-secured and automatically rotate.
-                </span>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-primary hover:bg-primary-dark text-white font-bold text-xs uppercase tracking-widest h-11 transition-all rounded-xl shadow-lg shadow-primary/10 mt-6"
-            >
-              {isLoading ? 'Authenticating Secures...' : 'Connect Workspace'}
-            </Button>
-          </form>
-        </Card>
-
-        
+          {/* Sign In Button */}
+          <button
+            id="login-submit"
+            type="submit"
+            disabled={isLoading}
+            style={{
+              width: '100%',
+              padding: '13px 20px',
+              background: isLoading
+                ? 'linear-gradient(135deg, #5b2fe0 0%, #4a26b8 100%)'
+                : 'linear-gradient(135deg, #7c4ff0 0%, #5b2fe0 100%)',
+              border: 'none',
+              borderRadius: '8px',
+              color: '#fff',
+              fontSize: '15px',
+              fontWeight: '600',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'opacity 0.2s, transform 0.1s',
+              boxShadow: '0 4px 20px rgba(108,60,225,0.35)',
+              opacity: isLoading ? 0.75 : 1,
+            }}
+            onMouseEnter={(e) => {
+              if (!isLoading) {
+                (e.currentTarget as HTMLButtonElement).style.opacity = '0.9'
+                ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'
+              }
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.opacity = '1'
+              ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'
+            }}
+          >
+            {isLoading ? (
+              <>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ animation: 'spin 1s linear infinite' }}>
+                  <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="3" />
+                  <path d="M12 2a10 10 0 0 1 10 10" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
+                </svg>
+                Signing in...
+              </>
+            ) : (
+              <>
+                Sign in
+                <ArrowRight style={{ width: '16px', height: '16px' }} />
+              </>
+            )}
+          </button>
+        </form>
       </div>
+
+      {/* Copyright Footer */}
+      <p style={{
+        marginTop: '28px',
+        color: '#4a4a60',
+        fontSize: '12px',
+        textAlign: 'center',
+        position: 'relative',
+        zIndex: 10,
+      }}>
+        © 2026 Guileo AI. All rights reserved.
+      </p>
+
+      {/* Spinner keyframe */}
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   )
 }
